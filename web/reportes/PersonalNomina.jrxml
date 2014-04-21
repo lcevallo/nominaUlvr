@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="globalNomina" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="4710eea8-a21d-4072-8107-b67f27dbfa02">
+	<property name="ireport.zoom" value="2.0"/>
+	<property name="ireport.x" value="101"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["C:\\Program Files\\Apache Software Foundation\\Tomcat 7.0\\webapps\\nominaUlvr\\reportes\\"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="cedula" class="java.lang.String">
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<parameter name="logo" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="ruta_subreporte" class="java.lang.String"/>
+	<parameter name="dia" class="java.lang.Integer"/>
+	<parameter name="mes" class="java.lang.Integer"/>
+	<parameter name="anio" class="java.lang.Integer"/>
+	<queryString>
+		<![CDATA[SELECT
+  public.empleado.nombres,
+  public.empleado.apellidos,
+  public.empleado.cedula,
+  public.departamento.nombre_departamento,
+  public.departamento.tipo,
+  public.funcion.tipo as funcion
+FROM
+  public.funcion
+  INNER JOIN public.empleado ON (public.funcion.cedula = public.empleado.cedula)
+  INNER JOIN public.empleado_departamento ON (public.empleado.cedula = public.empleado_departamento.cedula)
+  INNER JOIN public.departamento ON (public.empleado_departamento.id_departamento = public.departamento.id_departamento)
+WHERE
+  empleado_departamento.fecha_final IS NULL AND
+  empleado.cedula = $P{cedula}]]>
+	</queryString>
+	<field name="nombres" class="java.lang.String"/>
+	<field name="apellidos" class="java.lang.String"/>
+	<field name="cedula" class="java.lang.String"/>
+	<field name="nombre_departamento" class="java.lang.String"/>
+	<field name="tipo" class="java.lang.String"/>
+	<field name="funcion" class="java.lang.String"/>
+	<variable name="egresos" class="java.math.BigDecimal" calculation="System"/>
+	<variable name="ingresos" class="java.math.BigDecimal" calculation="System"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="143" splitType="Stretch">
+			<textField>
+				<reportElement x="432" y="90" width="123" height="20" uuid="467e8449-6ef3-48db-8cb4-a743715c88a6"/>
+				<textElement verticalAlignment="Top">
+					<font fontName="Verdana" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cedula}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="87" y="90" width="224" height="51" uuid="bdb9f465-eaa5-446c-9e94-a57b7147f00b"/>
+				<textElement textAlignment="Left" verticalAlignment="Top">
+					<font fontName="Verdana" size="12" isBold="true"/>
+					<paragraph lineSpacing="Proportional"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nombre_departamento}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="2" y="90" width="83" height="20" uuid="fae53060-d390-40a0-ad17-b9a440a3dac7"/>
+				<textElement textAlignment="Right">
+					<font size="12" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Departamento:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="3" y="59" width="66" height="20" uuid="e9dcb722-1a2b-41b1-bfe6-2be450b10ff9"/>
+				<textElement textAlignment="Right">
+					<font size="12" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Empleado:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="346" y="90" width="85" height="20" uuid="11256780-31d8-441d-9c8f-e09d0dcbe8ec"/>
+				<textElement textAlignment="Right">
+					<font size="12" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Cedula :]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="89" y="59" width="224" height="20" uuid="6a3ff8e3-715b-4cd5-812a-9fbd741db698"/>
+				<textElement>
+					<font fontName="Verdana" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{apellidos}+" "+$F{nombres}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="313" y="59" width="118" height="31" uuid="4d33e839-fc63-4840-8d45-9d920ce1fe25"/>
+				<textElement>
+					<font size="12" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Tipo Departamento:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="431" y="59" width="123" height="31" uuid="8e287cba-6e14-429b-9d4a-625503eb34c1"/>
+				<textElement>
+					<font fontName="Verdana" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tipo}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="216" y="0" width="130" height="27" uuid="51b62bcd-cc25-4979-8de2-8e4c37099fa2"/>
+				<textElement>
+					<font fontName="Times New Roman" size="22" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Rol de Pago]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="69" y="30" width="429" height="27" uuid="50f400d4-5d8d-424a-af70-af3cf8c07f14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Times New Roman" size="18" isBold="true"/>
+				</textElement>
+				<text><![CDATA[UNIVERSIDAD LAICA VICENTE ROCAFUERTE]]></text>
+			</staticText>
+			<image isUsingCache="true">
+				<reportElement x="3" y="5" width="66" height="54" uuid="4a47dacf-fcbe-4fc2-b6d0-321d06342562"/>
+				<imageExpression><![CDATA[$P{logo}]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="363" y="7" width="56" height="20" uuid="4921c71b-d537-4655-8e06-071d930b04d7"/>
+				<textElement textAlignment="Right">
+					<font size="12" isItalic="true"/>
+				</textElement>
+				<text><![CDATA[Periodo:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="419" y="6" width="136" height="20" uuid="69bb0ea4-af7c-41ef-a80c-5ed06af832cb"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""+$P{dia}+"/"+$P{mes}+"/"+$P{anio}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="206">
+			<subreport>
+				<reportElement x="279" y="0" width="275" height="204" uuid="a6f26175-eaaa-4c00-8228-951b2dc8348a"/>
+				<subreportParameter name="sub_mes">
+					<subreportParameterExpression><![CDATA[$P{mes}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_funcion">
+					<subreportParameterExpression><![CDATA[$F{funcion}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_cedula">
+					<subreportParameterExpression><![CDATA[$F{cedula}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_anio">
+					<subreportParameterExpression><![CDATA[$P{anio}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_dia">
+					<subreportParameterExpression><![CDATA[$P{dia}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="valor_rubro_1" toVariable="egresos"/>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "personalNomina_Sub_Egresos.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement x="0" y="0" width="275" height="204" uuid="fe8e9cd7-ee17-4643-85e6-712c39dd343f"/>
+				<subreportParameter name="sub_mes">
+					<subreportParameterExpression><![CDATA[$P{mes}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_funcion">
+					<subreportParameterExpression><![CDATA[$F{funcion}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_cedula">
+					<subreportParameterExpression><![CDATA[$F{cedula}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_dia">
+					<subreportParameterExpression><![CDATA[$P{dia}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="sub_anio">
+					<subreportParameterExpression><![CDATA[$P{anio}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="valor_rubro_1" toVariable="ingresos"/>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "personalNomina_Sub_Ingresos.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="453">
+			<textField>
+				<reportElement x="313" y="11" width="214" height="20" uuid="399114cb-647a-40f8-916a-03abde1ac975"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Verdana" size="12" isBold="true" isUnderline="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["$" + $V{ingresos}.subtract( $V{egresos} )]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="167" y="11" width="146" height="20" uuid="9ee4d33e-342b-4759-bdfd-d711609e0808"/>
+				<textElement textAlignment="Right">
+					<font fontName="Times New Roman" size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[NETO A RECIBIR :]]></text>
+			</staticText>
+			<line>
+				<reportElement x="16" y="123" width="200" height="1" uuid="9eaf9e8f-5adc-4572-8e63-1a8af076894c"/>
+			</line>
+			<line>
+				<reportElement x="298" y="121" width="221" height="1" uuid="76cea9d7-05c8-4376-82d0-fe7e2f380477"/>
+			</line>
+			<staticText>
+				<reportElement x="89" y="124" width="80" height="22" uuid="7b2f0ce1-677e-4371-9a82-be7f31bd62b5"/>
+				<textElement>
+					<font fontName="Lucida Sans" size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[NOMINA]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="279" y="126" width="248" height="20" uuid="59bbc7f1-e451-4116-a124-cee3e6f1abb1"/>
+				<textElement textAlignment="Center">
+					<font fontName="Lucida Sans" size="14" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{apellidos}+" "+$F{nombres}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="44" y="147" width="172" height="22" uuid="018a69ce-a54f-4aa3-a234-c4c1d3487a14"/>
+				<textElement textAlignment="Center">
+					<font fontName="Lucida Sans" size="14" isBold="false"/>
+				</textElement>
+				<text><![CDATA[DEP. TALENTO HUMANO]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="346" y="147" width="123" height="20" uuid="6bcbf573-63ba-4cfd-a72a-dd8f59fa41a1"/>
+				<textElement textAlignment="Center" verticalAlignment="Top">
+					<font fontName="Lucida Sans" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cedula}]]></textFieldExpression>
+			</textField>
+		</band>
+	</columnFooter>
+</jasperReport>

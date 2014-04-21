@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 06/03/2014 04:49:03 PM by Hibernate Tools 3.6.0 -->
+<hibernate-mapping>
+    <class name="model.Xlsresultado" table="xlsresultado" schema="public">
+        <composite-id name="id" class="model.XlsresultadoId">
+            <key-property name="cedula" type="string">
+                <column name="cedula" length="15" />
+            </key-property>
+            <key-property name="fechapago" type="date">
+                <column name="fechapago" length="13" />
+            </key-property>
+        </composite-id>
+        <many-to-one name="empleado" class="model.Empleado" update="false" insert="false" fetch="select">
+            <column name="cedula" length="15" not-null="true" />
+        </many-to-one>
+        <property name="idDepartamento" type="short">
+            <column name="id_departamento" not-null="true" />
+        </property>
+        <property name="valorTotal" type="big_decimal">
+            <column name="valor_total" precision="8" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

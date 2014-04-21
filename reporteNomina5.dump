@@ -1,0 +1,3074 @@
+--
+-- PostgreSQL database dump
+--
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+
+--
+-- Name: reporte_nomina; Type: DATABASE; Schema: -; Owner: postgres
+--
+
+CREATE DATABASE reporte_nomina WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'Spanish_Ecuador.1252' LC_CTYPE = 'Spanish_Ecuador.1252';
+
+
+ALTER DATABASE reporte_nomina OWNER TO postgres;
+
+\connect reporte_nomina
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+
+--
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+--
+
+CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
+
+
+--
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+--
+
+COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
+
+
+SET search_path = public, pg_catalog;
+
+--
+-- Name: ct_empleado; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE ct_empleado AS (
+	cedula character varying(15),
+	nombres character varying(150),
+	apellidos character varying(150),
+	num_cuenta character varying(10),
+	tipo_cuenta character(2),
+	banco integer,
+	email character varying(100)
+);
+
+
+ALTER TYPE public.ct_empleado OWNER TO postgres;
+
+--
+-- Name: ct_listaxlsresultado; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE ct_listaxlsresultado AS (
+	id character varying(50),
+	fechapago date,
+	cedula character varying(15),
+	nombres character varying(150),
+	apellidos character varying(150),
+	tipo character varying(100),
+	num_cuenta character varying(10),
+	valor_total numeric(8,2),
+	concepto character varying(150)
+);
+
+
+ALTER TYPE public.ct_listaxlsresultado OWNER TO postgres;
+
+--
+-- Name: agregar_empleado(character varying, character varying, character varying, character, character varying, character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION agregar_empleado(character varying, character varying, character varying, character, character varying, character varying) RETURNS SETOF ct_empleado
+    LANGUAGE plpgsql
+    AS $_$
+    DECLARE
+      inCedula ALIAS FOR $1;
+      inNombres ALIAS FOR $2;
+      inApellidos ALIAS FOR $3;
+      inTipoCuenta ALIAS FOR $4;
+      inCuenta ALIAS FOR $5;
+      inEmail ALIAS FOR $6;
+      outEmpleadosCount INTEGER;
+      outEmpleadosListRow public.ct_empleado;
+      
+      
+    BEGIN
+    	
+        SELECT 
+          INTO  outEmpleadosCount count(*)
+        FROM
+          public.empleado
+        WHERE
+          public.empleado.cedula = inCedula;
+        
+        IF outEmpleadosCount=0 THEN
+        		
+        	INSERT INTO public.empleado(
+            cedula,
+            nombres,
+            apellidos,
+            num_cuenta,
+            tipo_cuenta,            
+            email)
+          VALUES(
+            inCedula,
+            inNombres,
+            inApellidos,
+            inCuenta,
+            inTipoCuenta,
+            inEmail
+            );
+        
+        	
+        ELSE
+        	UPDATE 
+                public.empleado
+              SET
+                nombres = inNombres,
+                apellidos = inApellidos,
+                num_cuenta = inCuenta,
+                tipo_cuenta = inTipoCuenta,
+                email = inEmail
+              WHERE
+                public.empleado.cedula = inCedula;      	
+        
+        
+        END IF;
+        
+        FOR outEmpleadosListRow IN
+        SELECT 
+              public.empleado.cedula,
+              public.empleado.nombres,
+              public.empleado.apellidos,
+              public.empleado.num_cuenta,
+              public.empleado.tipo_cuenta,
+              public.empleado.banco,
+              public.empleado.email
+            FROM
+              public.empleado
+            WHERE
+              public.empleado.cedula = inCedula
+       LOOP
+       		RETURN NEXT outEmpleadosListRow;
+      END LOOP;
+    
+    END;
+$_$;
+
+
+ALTER FUNCTION public.agregar_empleado(character varying, character varying, character varying, character, character varying, character varying) OWNER TO postgres;
+
+--
+-- Name: ingresar_valores_resultado(character varying, integer, integer, integer, numeric, character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION ingresar_valores_resultado(character varying, integer, integer, integer, numeric, character varying) RETURNS void
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+    inCedula ALIAS FOR $1;
+    inDia ALIAS FOR $2;
+    inMes ALIAS FOR $3;
+    inAnio ALIAS FOR $4;
+    inMonto ALIAS FOR $5;
+    inConcepto ALIAS FOR $6;
+    outXlsResultadoCount INTEGER;
+    outIdDepartamento INTEGER;
+    outFechaGuardar DATE;
+BEGIN
+		
+    SELECT into outIdDepartamento
+      public.empleado_departamento.id_departamento
+    FROM
+      public.empleado_departamento
+      where
+      public.empleado_departamento.cedula=inCedula;
+	
+     SELECT INTO outFechaGuardar   to_date( CAST (inAnio as VARCHAR(4))||'-'||CAST (inMes as VARCHAR(2)) ||'-'|| CAST (inDia as VARCHAR(2)), 'YYYY-MM-DD');
+    
+    
+    SELECT into outXlsResultadoCount count(*) FROM  public.xlsresultado
+    WHERE  xlsresultado.cedula = inCedula AND xlsresultado.fechapago=outFechaGuardar;
+    
+  IF inMonto=0 THEN
+  		delete from xlsresultado where cedula=inCedula AND fechapago=outFechaGuardar;  
+  ELSE
+          IF outXlsResultadoCount=0 THEN
+          	
+              INSERT INTO public.xlsresultado(
+                cedula,
+                fechapago,
+                id_departamento,
+                valor_total,
+                concepto)
+               VALUES
+               (
+               inCedula,
+               outFechaGuardar,
+               outIdDepartamento,
+               inMonto, 
+               inConcepto);
+          	
+          
+          ELSE
+                  UPDATE public.xlsresultado
+                  SET
+                    valor_total = inMonto,
+                    concepto=inConcepto
+                    where
+                    cedula = incedula AND fechapago = outFechaGuardar;
+          
+          END IF;
+    
+  
+  END IF;  
+    
+	
+    
+
+END;
+$_$;
+
+
+ALTER FUNCTION public.ingresar_valores_resultado(character varying, integer, integer, integer, numeric, character varying) OWNER TO postgres;
+
+--
+-- Name: mostrar_xls(integer, integer, integer, character varying); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION mostrar_xls(integer, integer, integer, character varying) RETURNS SETOF ct_listaxlsresultado
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+   inDia ALIAS FOR $1;
+    inMes ALIAS FOR $2;  
+    inAnio ALIAS FOR $3;
+    inTipoFuncion ALIAS FOR $4;
+    outXLSCount INTEGER;
+    outXlsResultadoListRow public.ct_listaxlsresultado;
+    outFechaMostrar DATE;
+BEGIN
+
+	SELECT 
+          INTO  outXLSCount count(*)
+    FROM
+     empleado
+      LEFT OUTER JOIN funcion ON (empleado.cedula = funcion.cedula)
+      LEFT OUTER JOIN public.xlsresultado ON (funcion.cedula = public.xlsresultado.cedula)
+    WHERE
+    funcion.tipo=inTipoFuncion AND
+    (date_part('year',public.xlsresultado.fechapago)=inAnio
+      AND
+      date_part('month',public.xlsresultado.fechapago)=inMes
+      AND
+      date_part('day',public.xlsresultado.fechapago)=inDia); 
+	
+    SELECT 
+    	INTO outFechaMostrar
+     to_date( CAST (inAnio as VARCHAR(4))||'-'||CAST (inMes as VARCHAR(2)) ||'-'|| CAST (inDia as VARCHAR(2)), 'YYYY-MM-DD');
+        
+        
+    
+    IF outXLSCount=0 THEN
+		  FOR outXlsResultadoListRow IN
+              SELECT  DISTINCT
+                CAST(random()*100000000000000 AS text) as id,
+                outFechaMostrar as fechapago,
+                empleado.cedula,
+                empleado.nombres,
+                empleado.apellidos,
+                CASE empleado.tipo_cuenta
+                	WHEN '04' THEN 'Ahorro'
+                    WHEN '03' THEN 'Corriente'                
+                END as tipo_cuenta,
+                empleado.num_cuenta,
+                0.00 as valor_total,
+                '' as concepto
+              FROM
+                empleado
+               -- LEFT OUTER JOIN funcion ON (empleado.cedula = funcion.cedula)
+                INNER JOIN funcion ON (empleado.cedula = funcion.cedula)
+               WHERE
+               funcion.tipo=inTipoFuncion 
+          LOOP
+       			RETURN NEXT outXlsResultadoListRow;
+      	  END LOOP;
+
+
+        ELSE
+           
+          FOR outXlsResultadoListRow IN           
+           SELECT 
+                    CAST(random()*100000000000000 AS text) as id,
+                    xlsresultado.fechapago,
+                    empleado.cedula,
+                    empleado.nombres,
+                    empleado.apellidos,
+                    CASE empleado.tipo_cuenta
+                	WHEN '04' THEN 'Ahorros'
+                    WHEN '03' THEN 'Corriente'                
+                	END as tipo_cuenta,
+                    empleado.num_cuenta,
+                    xlsresultado.valor_total,
+                    xlsresultado.concepto
+              FROM
+                empleado
+                LEFT OUTER JOIN funcion ON (empleado.cedula = funcion.cedula)
+                LEFT OUTER JOIN public.xlsresultado ON (funcion.cedula = public.xlsresultado.cedula)
+              WHERE
+              funcion.tipo =inTipoFuncion
+                AND
+                (date_part('year',xlsresultado.fechapago)=inAnio
+                AND
+                date_part('month',xlsresultado.fechapago)=inMes
+                AND
+                date_part('day',xlsresultado.fechapago)=inDia)
+           UNION 
+           		SELECT  DISTINCT
+                CAST(random()*100000000000000 AS text) as id,
+                outFechaMostrar fechapago,
+                empleado.cedula,
+                empleado.nombres,
+                empleado.apellidos,
+                 CASE empleado.tipo_cuenta
+                	WHEN '04' THEN 'Ahorros'
+                    WHEN '03' THEN 'Corriente'                
+                	END as tipo_cuenta,
+                empleado.num_cuenta,
+                0.00 as valor_total,
+                '' as concepto
+              FROM
+                empleado
+                --LEFT OUTER JOIN funcion ON (empleado.cedula = funcion.cedula)
+                INNER JOIN funcion ON (empleado.cedula = funcion.cedula)
+                WHERE
+                funcion.tipo=inTipoFuncion
+                AND
+                empleado.cedula NOT IN ( SELECT   DISTINCT                
+                                                empleado.cedula                                                
+                                          FROM
+                                            empleado
+                                              LEFT OUTER JOIN funcion ON (empleado.cedula = funcion.cedula)
+                                              LEFT OUTER JOIN public.xlsresultado ON (funcion.cedula = public.xlsresultado.cedula)
+                                          WHERE
+                                           funcion.tipo=inTipoFuncion AND
+                                            (
+                                            date_part('year',xlsresultado.fechapago)=inAnio
+                                            AND
+                                            date_part('month',xlsresultado.fechapago)=inMes
+                                            AND
+                                            date_part('day',xlsresultado.fechapago)=inDia) 
+                                         )
+                	
+                
+           	 LOOP
+       			RETURN NEXT outXlsResultadoListRow;
+      		END LOOP;
+            
+        END IF;
+    
+    
+    
+
+END;
+$_$;
+
+
+ALTER FUNCTION public.mostrar_xls(integer, integer, integer, character varying) OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_with_oids = false;
+
+--
+-- Name: departamento; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE departamento (
+    id_departamento integer NOT NULL,
+    nombre_departamento character varying(150) NOT NULL,
+    tipo character varying(100) NOT NULL
+);
+
+
+ALTER TABLE public.departamento OWNER TO postgres;
+
+--
+-- Name: departamento_id_departamento_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE departamento_id_departamento_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.departamento_id_departamento_seq OWNER TO postgres;
+
+--
+-- Name: departamento_id_departamento_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE departamento_id_departamento_seq OWNED BY departamento.id_departamento;
+
+
+--
+-- Name: docente_detalles; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE docente_detalles (
+    cedula character varying(15) NOT NULL,
+    fecha_pago date NOT NULL,
+    detalle character varying(100),
+    valor_actual_horas numeric(8,2) NOT NULL,
+    total_horas_quincenal smallint NOT NULL,
+    total_horas_faltas smallint NOT NULL,
+    descuento_x_faltas numeric(8,2) NOT NULL,
+    anticipo_quincenal numeric(8,2) NOT NULL,
+    egreso_anticipo_quincenal numeric(8,2) NOT NULL
+);
+
+
+ALTER TABLE public.docente_detalles OWNER TO postgres;
+
+--
+-- Name: docentes; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE docentes (
+    cedula character varying(15) NOT NULL,
+    facultad character varying(150) NOT NULL,
+    fecha_desafilacion date,
+    estado boolean NOT NULL
+);
+
+
+ALTER TABLE public.docentes OWNER TO postgres;
+
+--
+-- Name: empleado; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE empleado (
+    cedula character varying(15) NOT NULL,
+    nombres character varying(150) NOT NULL,
+    apellidos character varying(150) NOT NULL,
+    num_cuenta character varying(10),
+    tipo_cuenta character(2),
+    banco integer DEFAULT 34,
+    email character varying(100)
+);
+
+
+ALTER TABLE public.empleado OWNER TO postgres;
+
+--
+-- Name: empleado_departamento; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE empleado_departamento (
+    cedula character varying(15) NOT NULL,
+    id_departamento smallint NOT NULL,
+    fecha_final date,
+    estado boolean DEFAULT true NOT NULL
+);
+
+
+ALTER TABLE public.empleado_departamento OWNER TO postgres;
+
+--
+-- Name: funcion; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE funcion (
+    cedula character varying(15) NOT NULL,
+    tipo character varying(100) NOT NULL
+);
+
+
+ALTER TABLE public.funcion OWNER TO postgres;
+
+--
+-- Name: observacion; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE observacion (
+    cedula character varying(15) NOT NULL,
+    id_departamento smallint NOT NULL,
+    fecha_pago timestamp without time zone NOT NULL,
+    observacion_txt character varying(255)
+);
+
+
+ALTER TABLE public.observacion OWNER TO postgres;
+
+--
+-- Name: quincena; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE quincena (
+    cedula character varying(15) NOT NULL,
+    id_departamento smallint NOT NULL,
+    estado boolean NOT NULL,
+    id_rubro integer NOT NULL,
+    fecha_pago timestamp without time zone NOT NULL,
+    valor_rubro numeric(8,2) NOT NULL,
+    tipo_pago character(1) NOT NULL
+);
+
+
+ALTER TABLE public.quincena OWNER TO postgres;
+
+--
+-- Name: rubro; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE rubro (
+    id_rubro integer NOT NULL,
+    nombre character varying(120) NOT NULL,
+    tipo character varying(10) NOT NULL
+);
+
+
+ALTER TABLE public.rubro OWNER TO postgres;
+
+--
+-- Name: rubro_id_rubro_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE rubro_id_rubro_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.rubro_id_rubro_seq OWNER TO postgres;
+
+--
+-- Name: rubro_id_rubro_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE rubro_id_rubro_seq OWNED BY rubro.id_rubro;
+
+
+--
+-- Name: xlsresultado; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE TABLE xlsresultado (
+    cedula character varying(15) NOT NULL,
+    fechapago date NOT NULL,
+    id_departamento smallint NOT NULL,
+    valor_total numeric(8,2) NOT NULL,
+    concepto character varying(150)
+);
+
+
+ALTER TABLE public.xlsresultado OWNER TO postgres;
+
+--
+-- Name: vista_resultado; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW vista_resultado AS
+ SELECT empleado.cedula,
+    empleado.nombres,
+    empleado.apellidos,
+    empleado.num_cuenta,
+    xlsresultado.valor_total,
+    funcion.tipo,
+    xlsresultado.fechapago
+   FROM ((xlsresultado
+   RIGHT JOIN empleado ON (((xlsresultado.cedula)::text = (empleado.cedula)::text)))
+   JOIN funcion ON (((empleado.cedula)::text = (funcion.cedula)::text)));
+
+
+ALTER TABLE public.vista_resultado OWNER TO postgres;
+
+--
+-- Name: id_departamento; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY departamento ALTER COLUMN id_departamento SET DEFAULT nextval('departamento_id_departamento_seq'::regclass);
+
+
+--
+-- Name: id_rubro; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY rubro ALTER COLUMN id_rubro SET DEFAULT nextval('rubro_id_rubro_seq'::regclass);
+
+
+--
+-- Data for Name: departamento; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY departamento (id_departamento, nombre_departamento, tipo) FROM stdin;
+1	SECRETARIOS DE FACULTADES Y ESCUELAS	ADMINISTRATIVO-SISTEMAS
+2	DEPARTAMENTO FINANCIERO	ADMINISTRATIVO-SISTEMAS
+3	MÓDULOS DE INGLÉS	ADMINISTRATIVO-SISTEMAS
+4	AYUDANTES DE SECRETARÍAS: FACULTADES Y ESCUELAS	ADMINISTRATIVO-SISTEMAS
+5	INSPECTORES DE FACULTADES Y ESCUELAS	ADMINISTRATIVO-SISTEMAS
+6	SECRETARIAS(OS)	ADMINISTRATIVO-SISTEMAS
+7	DEPARTAMENTO DE BIENESTAR ESTUDIANTIL	ADMINISTRATIVO-SISTEMAS
+8	DEPARTAMENTO DE SISTEMA DE INFORMACIÓN Y TELECOMUNICACIÓN	ADMINISTRATIVO-SISTEMAS
+9	ACTIVIDADES CULTURALES	ADMINISTRATIVO-SISTEMAS
+10	UNIDAD DE PRESUPUESTO	ADMINISTRATIVO-SISTEMAS
+11	SECRETARÍA II	ADMINISTRATIVO-SISTEMAS
+12	DEPARTAMENTO DE PLANEAMIENTO	ADMINISTRATIVO-SISTEMAS
+13	AYUDANTES DE TESORERÍA	ADMINISTRATIVO-SISTEMAS
+14	BODEGA	ADMINISTRATIVO-SISTEMAS
+15	ESTUDIO JURÍDICO DE JURISPRUDENCIA	ADMINISTRATIVO-SISTEMAS
+16	COORDINACIÓN ACADÉMICA Y CIENTÍFICA	ADMINISTRATIVO-SISTEMAS
+17	TALENTO HUMANO	ADMINISTRATIVO-SISTEMAS
+18	DEPARTAMENTO DE PUBLICACIONES	ADMINISTRATIVO-SISTEMAS
+19	BIBLIOTECA	ADMINISTRATIVO-SISTEMAS
+20	CENTRO DE ESTUDIOS DE GRADO Y POSGRADO	ADMINISTRATIVO-SISTEMAS
+21	EMPLEADOS ESPECIALES (CONADIS)	ADMINISTRATIVO-SISTEMAS
+22	ENFERMERAS	ADMINISTRATIVO-SISTEMAS
+23	ADMISIÓN Y DESARROLLO HUMANO	ADMINISTRATIVO-SISTEMAS
+24	ADMINISTRATIVO	ADMINISTRATIVO-SISTEMAS
+25	DEPARTAMENTO DE INVESTIGACIONES CIENTÍFICAS Y TECNOLÓGICAS	ADMINISTRATIVO-SISTEMAS
+26	DEPARTAMENTO DE EVALUACIÓN	ADMINISTRATIVO-SISTEMAS
+27	CONMUTADOR	ADMINISTRATIVO-SISTEMAS
+28	DEPARTAMENTO AUDIOVISUAL	ADMINISTRATIVO-SISTEMAS
+29	DIRECTIVOS	ADMINISTRATIVO-SISTEMAS
+30	CONSERJES DE FACULTADES Y ESCUELAS	SERVICIOS
+31	CHOFERES	SERVICIOS
+32	GUARDIANES DIURNOS	SERVICIOS
+33	ELECTRICISTA	SERVICIOS
+34	CARPINTEROS ALBAÑILES	SERVICIOS
+35	GUARDIANES NOCTURNOS	SERVICIOS
+36	GUARDIANES	SERVICIOS
+37	MENSAJEROS	SERVICIOS
+38	JARDINEROS	SERVICIOS
+39	PINTOR	SERVICIOS
+40	CIENCIAS CONTB	DOCENTES
+41	COM EXT	DOCENTES
+42	PERIODISMO	DOCENTES
+43	CIENCIAS ECO	DOCENTES
+44	MERCADOTECNIA	DOCENTES
+45	LENGUAS	DOCENTES
+46	JURISP	DOCENTES
+47	CIENCIAS ADM	DOCENTES
+48	PUBLICIDAD	DOCENTES
+49	ARQ	DOCENTES
+50	DISEÑO	DOCENTES
+51	PARVULOS	DOCENTES
+52	CIENCIAS DE LA EDUC	DOCENTES
+53	ING CIVIL	DOCENTES
+54	ADM SECRETARIAL	DOCENTES
+55	DESARROLLO HUMANO	ADMINISTRATIVO-SISTEMAS
+56	COORDINACIÓN DEPORTIVA 	ADMINISTRATIVO-SISTEMAS
+57	MARKETING Y PUBLICIDAD 	ADMINISTRATIVO-SISTEMAS
+\.
+
+
+--
+-- Name: departamento_id_departamento_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('departamento_id_departamento_seq', 57, true);
+
+
+--
+-- Data for Name: docente_detalles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY docente_detalles (cedula, fecha_pago, detalle, valor_actual_horas, total_horas_quincenal, total_horas_faltas, descuento_x_faltas, anticipo_quincenal, egreso_anticipo_quincenal) FROM stdin;
+\.
+
+
+--
+-- Data for Name: docentes; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY docentes (cedula, facultad, fecha_desafilacion, estado) FROM stdin;
+\.
+
+
+--
+-- Data for Name: empleado; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY empleado (cedula, nombres, apellidos, num_cuenta, tipo_cuenta, banco, email) FROM stdin;
+0910272129	Gustavo Leonidas	Aguilar Hinojosa	0001556731	04	34	
+0925484925	Diana Veronica	Aguilar Holguin	0851100487	04	34	
+0914633557	Cristina Maria	Aguilar Rodriguez	0851157211	04	34	
+0918854639	Cristina Belgica	Alava Macias	0851157227	04	34	
+0915586564	Bolivar Yiyer	Alay Gonzalez	0851157233	04	34	
+0907696728	Marisol 	Alvarez Nunez	0851157167	04	34	
+0919757344	Luis Alexander	Amador Oyola	0851253547	04	34	
+0922901319	Henry Paul	Anastacio Altamirano	0851157255	04	34	
+0921917860	Veronica  de Las Mercedes	Aragundi Pesantez	0961032654	04	34	varagundip@ulvr.edu.ec
+1303803231	Enrique Gabriel	Aragundi Prado	0851157261	04	34	
+0909599474	Awdrey Coral	Araujo Ballen	0961032110	04	34	
+0915560403	Argentina Lourdes	Arias Barrionuevo	0021192499	04	34	
+0922388061	Luis Armando	Arias Duque	0001779067	04	34	lariasd@ulvr.edu.ec
+0919289439	Ambar Geomar	Armas Castro	0851157299	04	34	
+0906648688	Lucia Narcisa	Aroca Briones	0031221907	04	34	
+0917636862	Juan Carlos	Arreaga Mendoza	0021415785	04	34	
+1718284894	Maria Magdalena	Avila Aveiga	0851157309	04	34	
+0912130317	Mariela Soraya	Aviles Jimenez	0851157315	04	34	
+0901583864	Isabel Cristina	Ballen Andrade	0961032258	04	34	
+0915255277	Raquel Itamar	Barba Gonzalez	0851157337	04	34	
+0908681513	Guadalupe Rosario	Barriga Ordonez	0851254637	04	34	
+0917455115	Lilia Annabell	Barzola Muentes	0851157343	04	34	
+0918433442	Wendy Narcisa	Benavides Sanchez	0951091574	04	34	
+0919770651	Veronica Elizabeth	Benitez Silva	0002543040	04	34	
+1310410376	Luisa Solange	Briones Cobena	0851157371	04	34	
+1202150833	Nelson Arturo	Briones Leon	0002132722	04	34	
+0918133562	Lenny Rosalia	Briones Velez	0861063685	04	34	
+1706886387	Marcos Aurelio	Brito Bedoya	0851157387	04	34	
+0703617993	Dolores Zelandia	Buruhan Ramirez	0851253685	04	34	
+0916485444	Veronica Alicia	Cabrera Nuques	0851253465	04	34	
+0916243488	Byron Saul	Campoverde Altamirano	0931061406	04	34	
+1202469621	Doris 	Cardenas Benalcazar	0821019777	04	34	
+0917456766	Gloria 	Cardenas Valencia	0851098285	03	34	
+0921899381	Carolina Elizabeth	Carrasco Salas	000000	04	34	
+0914361407	Katherine Paulowa	Carriel Mejia	0851157393	04	34	
+0915198790	Mario 	Carriel Sotomayor	0851157403	04	34	
+0913778627	Janet Ivonne	Castillo Lindao	0851157419	04	34	
+1308095221	Jose Hernan	Cedeno Intriago	5001341935	04	34	
+0904738911	Johnny 	Cedeno Miranda	0851157431	04	34	
+0915740138	Luis Alberto	Cevallos Cavero	0921184110	04	34	lcevallo@gmail.com
+0926425893	Margarita Elizabeth	Chalen Carriel	0931074216	04	34	
+0912504826	Liz Veronica	Chang Torres	0851026097	04	34	
+0909256885	Pablo Antonio	Chavez Camones	0851159551	04	34	
+1205121195	Maria Jose	Chica Andrade	1721015448	04	34	
+0913936670	Jorge 	Chichandi Andrade	0921088378	04	34	
+0916660921	Karina 	Chiriguayo Almeida	0851157447	04	34	
+0910564673	Jenny 	Chonillo Cruz	0021343571	04	34	
+0917572695	Monica Patricia	Chuchuca Ajila	0851157469	04	34	
+0917570186	Maria Alexandra	Chumbi Tapia	0851157475	04	34	
+0602404527	Blanca Esperanza	Condo Moyon	0851157497	04	34	
+0903932598	Fanny 	Cunto Alarcon	0851157513	04	34	
+0905536140	Betty Maritza	Dominguez Aguilar	0021415763	04	34	
+0923550073	Diana Elizabeth	Dominguez Nicola	0851157535	04	34	
+0926278235	Yanella 	Duarte Pila	0021418247	04	34	
+0915397301	Cesar Augusto	Eras Guaman	0021415977	04	34	
+0701800302	Tania Elizabeth	Feijoo Cango	0961032720	04	34	
+0906151014	Olga Matilde	Flores Nunez	0851017125	04	34	
+0914621099	Luis Fernando	Garcia Anastacio	0021385321	04	34	
+0602046427	Evelin Karina	Garcia Flores	0851157579	04	34	
+0915109490	Jorge Eduardo	Garcia Hinojosa	0021458169	04	34	
+0909515488	Karina Soraya	Garcia Hinojosa	0002543012	04	34	
+1307094613	Kelvin Laurido	Gender Cevallos	0002051778	03	34	
+0918280637	Johanna Veronica	Guerrero Flores	0875007009	04	34	jguerrerof@ulvr.edu.ec
+0909864902	Maria Magdalena	Guizado Zuniga	0981043018	04	34	
+0907240519	Ronaldo 	Gutierrez Franco	0851157591	04	34	
+0918786153	Geomaira Fatima	Guzman Constante	0961032764	04	34	
+0910220540	Ramona Petra	Herdoiza Sangurima	0851157601	04	34	
+0923986079	Norma Isabel	Hernandez Peralta	0851157617	04	34	
+0923359707	Marjorie Lorena	Hernandez Velasco	0002179682	04	34	
+0916489552	Fabricio 	Hidalgo Chancay	0851157623	04	34	
+0902066851	Gustavo Antonio	Hinojosa Dazza	0851020743	04	34	
+0907350847	Maria de Lourdes	Hinojosa Dazza	0851047513	04	34	
+0921974978	Carlos Andres	Huiracocha Salavarria	0931016380	04	34	
+0905565917	Demetrio 	Ibarra Cobena	0851157645	04	34	
+1203767957	Bella Alexandra	Jibaja Mora	2051035327	04	34	
+0913784690	Faura Salome	Jimenez Moreno	0851157651	03	34	
+0920414224	Margot 	Jimenez Romero	000000	04	34	
+0911529295	Wilson Enrique	Jordan Armijos	0851157667	04	34	
+0915330179	Maria Isabel	Lopez Davila	0851157689	04	34	
+0701519258	Glenda Marilyn	Lopez Ramos	0851157695	04	34	
+0909616708	Juana Elizabeth	Lozano Mendez	0002133224	04	34	
+0911175677	Linda 	Maldonado Guerrero	0961033832	04	34	
+0906601307	Miguel Vicente	Martillo Jara	0851157705	04	34	
+0924038243	Emilene Marina	Martillo Robins	0851157711	04	34	
+0912896685	Gina 	Martinez Cando	0851115603	04	34	
+0901859629	Miguel Alejandro	Maya Jaramillo	0851157727	04	34	
+0921338646	Maria Fernanda	Medina Fajardo	0851157733	04	34	
+0916212715	Maria del Pilar	Mejia Suarez	0961009040	04	34	
+0910920925	Aracely Janina	Mendoza Rios	0011024275	04	34	
+0910711829	Janine Marisol	Menendez Gendez	0851157755	04	34	
+0911225381	Mercedes Genoveva	Mite Buenano	0961033420	04	34	
+0917242471	Monica 	Molina Barzola	0921209638	04	34	
+0914761366	Rosa Ines	Montes Chunga	0851157783	04	34	
+0915261127	Claudia Victoria	Moran Barco	0851157799	04	34	
+1203802226	Jose Augusto	Morante Jimenez	0001762413	04	34	
+0908650138	Jacqueline Magali	Munoz Martinez	0851157815	04	34	
+0906825393	Maximina 	Murillo Moran	0961032786	04	34	
+0950071613	Shirley Denisse	Naranjo Criollo	0851157821	04	34	
+0912268109	Luisa Patricia	Navarrete Zavala	0021385309	04	34	
+0917230955	Emilene Isabel	Ochoa Coronel	0961013016	04	34	
+0908959638	Rosa Melba	Onofre Piedrahita	0851157859	03	34	
+0918213067	Ricardo Javier	Ortega Sanchez	000000	04	34	
+0909799793	Janeth Maria	Ortiz Veliz	0021343625	04	34	
+0926587353	Denisse Vanessa	Ortiz Vulgarin	0021416039	04	34	
+0910322221	Sonnia Guadalupe	Pacheco Mayeza	0851157865	04	34	
+0909720856	Charles Keneth	Palacios Pesantes	0851253641	04	34	
+0909182180	Eduardo Antonio	Paladines Munoz	0031221963	04	34	
+0912906070	Miguel Roman	Parra Noboa	0021399199	04	34	
+0919558452	Deysi Julia	Pena Tabares	0961032818	04	34	
+0905583142	Monica Patricia	Perez Alarcon	0002132662	04	34	
+0917490450	David Agustin	Perez Vera	0021417437	04	34	
+0919761478	Felix Andres	Pezo Cazorla	0001730433	04	34	
+0917759110	Maira Azucena	Ponce Asencio	0851157919	04	34	
+0918757576	Angel Roberto	Ponce Ochoa	0002195004	04	34	
+0913316642	Eleodoro Esteban	Portocarrero Clark	0871101131	04	34	
+0918587148	Yadira Paola	Quijije Sanchez	0011090285	04	34	
+0929689693	Miriam Elizabeth	Quimi Solis	0851157931	04	34	
+1308628740	Mary Leonor	Quimis Franco	0851157947	04	34	
+0920602356	Mariuxi Fernanda	Quinde Pareja	0041020739	04	34	
+0912090792	Marjorie Alicia	Quinonez Benitez	0011085883	04	34	
+0911318798	Carlos Alberto	Quinto Espinoza	0002132936	04	34	
+0910389170	Sonia Sandra	Ramirez Leon	0851157953	04	34	
+0918834045	Vilma Elizabeth	Ramon Pupiales	0851157969	04	34	
+0918576281	Nelly Teresa	Ramos Andrade	0851157975	04	34	
+0911037950	Ruth Yolanda	Reinoso Argoti	0971001914	04	34	
+0913568952	Segundo Jose	Remache Anchundia	0851157981	04	34	sremache@ulvr.edu.ec
+0919754267	Beatriz Mariana	Reyes del Pezo	0851157997	04	34	
+0914634670	Angela Alexandra	Reyes Gendes	0961032830	04	34	
+0907679906	Aracelly Antonieta	Robbys Gonzabay	0851158009	04	34	
+0913045993	Ketty Elizabeth	Rodriguez Barahona	0851249509	04	34	
+0921273058	Leticia Aracely	Rodriguez Santana	0851158015	04	34	
+0926447855	Diana Ines	Rodriguez Soriano	0851158021	04	34	
+0918798448	Cristina Paola	Romero Duarte	0851158037	04	34	
+0917139958	Jessica Elizabeth	Rugel Ortega	0021350291	04	34	
+0914430095	Omar Javier	Ruiz Lopez	0851158065	04	34	
+0913169132	Sara Iralda	Ruiz Rivas	0851158071	04	34	
+0916402803	Luis Alberto	Ruiz Ruiz	0021347887	04	34	
+0918731407	Julia Janeth	Sagbaicela Sanchez	0021148627	04	34	
+0917433120	Nancy Griselda	Sanchez Oviedo	0031221979	04	34	
+0905197521	Lucila Orly	Sandoval Navarrete	0851253663	04	34	
+0926570284	Jonathan Xavier	Saquicela Bajana	0851159237	04	34	
+0908993918	Jacqueline Rosario	Serrano Aulestia	0851120901	04	34	
+0912148376	Carlos Luis	Serrano Laynez	0021399221	04	34	
+0911291094	Yazmina 	Sosa Moreno	0851157205	04	34	
+0907887269	Ricardo Rodolfo	Soto Fuentes	0961036372	04	34	
+0100416791	Gerardo 	Suarez Jara	0851158093	04	34	
+0923002133	Luis Andres	Suarez Pineiro	0021420253	04	34	
+0919717108	Maria Eugenia	Tigrero Malave	0851158119	04	34	
+0918072042	Miguel Alberto	Torres Rodriguez	0021421393	04	34	
+0916388010	Alexandra Maria	Vaca Mora	0851158131	04	34	
+0922711692	Hilda Irene	Vaque Guerron	000000	04	34	
+0915574768	Niccole Aida	Varas Chiquito	0021343565	04	34	
+0919688960	William Geovanny	Varela Porro	0941090624	04	34	wvarelap@ulvr.edu.ec
+0907163760	Telmo Gabriel	Vega Garcia	0851158153	04	34	
+1308282647	Juan Gualberto	Vera Ponce	0851158175	04	34	
+0921626875	Shirley 	Villalta Salazar	0851158197	04	34	
+0926966128	Diana Elizabeth	Villon Cedeno	0851158207	04	34	
+0920854080	Mayra Susana	Yagual Chiquito	0851158235	04	34	
+0919705228	Helen Vanessa	Yance Monroy	0851158257	04	34	
+0914798889	Alexandra Elizabeth	Yepez Vera	0851158263	04	34	
+0908498181	Andres Francisco	Zambrano Almeida	0021399183	04	34	
+0925650665	Andrea Celeste	Zerna Rambay	0851158279	  	34	
+0912555653	Faustino Alejandro	Aces Rosado	0961032626	04	34	
+0904988854	Enrique Eugenio	Aguilera Barrientos	0851158285	04	34	
+0906642947	Luis Gilberto	Alarcon Camba	0851158291	04	34	
+0906632658	Milton Plutarco	Alarcon Camba	0851158301	04	34	
+0914554373	Javier Eduardo	Alarcon Munoz	0021213975	04	34	
+0914114236	Jose Manuel	Alvarez Yanez	0021415707	04	34	
+0919586032	Edison Alberto	Amaguaya Gusqui	0851158323	04	34	
+0920525839	Jose Alfredo	Amaguaya Gusqui	0851158339	04	34	
+0909141160	Juan Carlos	Andrade Briones	0851158345	04	34	
+0905468997	Magno 	Angulo Cabrera	0851158351	04	34	
+0914661996	Juan 	Arevalo Plasencio	0821041411	04	34	
+0912600236	Johnny 	Arevalo Plazarte	0851158367	04	34	
+1203001621	Hermes Gregorio	Arias Mendez	0051552623	04	34	
+0950855064	Christopher Israel	Arroyo Franco	0002387648	04	34	
+1306081397	Neide Rufino	Aveiga Vilela	0851158389	04	34	
+0926655432	Angel Benedicto	Avila Aveiga	0851158395	04	34	
+1310902588	Mario Gustavo	Avila Medina	0911094764	04	34	
+1305446195	Cornelio Sebastian	Baque Reyes	0851158411	04	34	
+0920985322	Luis Alberto	Borbor Trivino	2021046489	04	34	
+0911742336	Manuel Alfredo	Briones Garcia	0031221935	04	34	
+0916518780	Victor Hugo	Briones Garcia	0851158449	04	34	
+1308605979	Edwin Stalin	Cadena Carranza	0851158455	04	34	
+0924740319	Segundo Felix	Caicedo Reinoso	0851158461	04	34	
+0915934343	Raul Segundo	Cajamarca Zambrano	0851158477	04	34	
+1306411925	Melvin Ignacio	Calderon Macias	0851158499	04	34	
+0918760919	Estuardo Vicente	Castillo Cruz	0021343619	04	34	
+0904715661	Alejandro 	Castro Miranda	0851158515	04	34	
+0920164878	Patricio Daniel	Castro Salvatierra	0961032676	04	34	
+0922688429	Efren Gregorio	Cercado Moreira	0851158537	04	34	
+1311024002	Rodolfo Ismael	Cevallos Mera	0851158543	04	34	
+0920603198	Victor Hugo	Cevallos Sinche	0851158559	04	34	
+0920379237	George Alex	Chungata Cornejo	0002133054	04	34	
+0905722971	Elias 	Cox Alvarado	0851158587	04	34	
+0922571773	Freddy Javier	De La S Villacis	0851158593	04	34	
+0914074505	Angel Giovanny	Diaz Garcia	0851158603	04	34	
+0909283772	Johnny Javier	Diaz Peso	0021399215	04	34	
+1200875894	Enrique 	Estrada Ruiz	0851158619	04	34	
+0909762783	Johnny 	Figueroa Aguilar	0851158625	04	34	
+0906077144	Antonio 	Figueroa Luis	0961032736	04	34	
+0905715900	Elias Arnaldo	Flores Merchan	0851158631	04	34	
+0919171819	Luis Enrique	Flores Novillo	0041116421	04	34	
+1303465270	Amable 	Garcia Cedeno	0851158647	04	34	
+0910089515	Angel Cesar	Gomez Madrid	0851158675	04	34	
+0917607434	Jose Rodolfo	Gomez Pincay	0851158681	04	34	
+0925513384	Victor Simon	Gomez Pincay	0851158697	04	34	
+0914910369	Andres Ricardo	Gonzalez Asencio	0851157139	04	34	
+0905863205	Julio Cesar	Gonzalez Chavez	0851158707	04	34	
+0909181711	Luis Alberto	Gonzalez Vargas	0851158713	04	34	
+0909561680	Luis Enrique	Granizo Tapia	0861056789	04	34	
+0913930327	Amador Isaac	Grijalva Santillan	0021416127	04	34	
+0916323835	Segundo Manuel	Guananga Amagualla	0851158729	04	34	
+0921314936	Franklin Alex	Guerrero Medina	0021347837	04	34	
+0915801955	Luis Antonio	Hernandez Suco	0851158735	04	34	
+0905938908	Carlos Luis	Idrovo Garzon	0851158763	04	34	
+0905799094	 	Indacochea Yonni	0851158779	04	34	
+0903247534	German 	Jara Barba	0961032770	04	34	
+0917241887	Jimmy Rolando	Jimenez Castillo	0851158785	04	34	
+0906167176	Timoteo 	Jumbo Moreno	0851158791	04	34	
+0910947886	Marcos Antonio	Lainez Mosquera	0851158801	04	34	
+0908634728	Washington 	Litardo Carriel	0851158817	04	34	
+0926869801	Eitel Daniel	Lopez Gomez	0851158839	04	34	
+0909508558	Manuel 	Lopez Molina	0851158845	04	34	
+0901887547	Santiago Segundo	Macias Sanchez	0851158867	04	34	
+0910738897	Oscar 	Macias Trivino	0851158873	04	34	
+0801716101	Nery Rogelio	Macias Vera	0851158889	04	34	
+1311982860	Ulvio Leodan	Macias Vera	0851158895	04	34	
+0912987955	Henrry 	Malave Salinas	0851158905	04	34	
+0906211073	Juan Francisco	Mariduena Salazar	0851158911	04	34	
+0912212263	Juan Carlos	Marin Olvera	0031221929	04	34	
+0909067852	Jorge 	Medina Martillo	0851158927	04	34	
+0916384571	Hugo Clemente	Mejillones Tigrero	0851158933	04	34	
+1301316806	Francisco 	Merchan Conforme	0941149912	04	34	
+0914793732	Vicente Francisco	Montiel Loor	0851158949	04	34	
+0916682669	Ivan Fabricio	Moran Barco	0851158955	04	34	
+1303192627	Napoleon Olmedo	Moreira Alcivar	0851158961	04	34	
+0920101193	Jose Jeovanny	Moreira Macias	0851158977	04	34	
+0917266488	Carlos Jesus	Murillo Marury	0851158999	04	34	
+1304409541	Jonny Edmundo	Napa Calderon	0851159001	04	34	
+0909877987	Cesar 	Navarro Moncayo	0851159017	04	34	
+0917700049	Juan Emilio	Orrala Yagual	0911032182	04	34	
+0905919890	Manuel 	Ortega Parra	0002133192	04	34	
+0917569832	Marlon 	Patino Rodriguez	0851159039	04	34	
+1303569576	Inocencio Laureano	Perero Baque	0051549187	04	34	
+1303174336	Luis 	Pico Anchundia	0851159045	04	34	
+1203166028	Jose Luis	Pincay Ayala	0001937441	04	34	
+0920317781	Felix Enrique	Pincay Solis	0961033876	04	34	
+0915852800	Francisco Geronimo	Pisco Toala	0851159051	04	34	
+1301790075	Digno 	Ponce Guaranda	0851159067	04	34	
+0916018732	Rosendo Adriano	Pozo Romero	0851159073	04	34	
+0908036726	Jose 	Quichimbo Encarnacion	0002132876	04	34	
+0911488930	Francisco Venancio	Quimi Larrosa	0851159089	04	34	
+0907754113	George Emiterio	Quinde Burgos	0851159095	04	34	
+0915264980	Robinson Limber	Quinde Sanchez	0941149928	04	34	
+0913904009	Franklin Alberto	Quinto Moran	0861075327	04	34	
+0905232914	Williams Isidro	Reinoso Franco	0851159105	04	34	
+0914633946	Hugo Gabriel	Reyes Gendes	0851159127	04	34	
+0915315923	Jose Gabriel	Robalino Gordillo	0851159133	04	34	
+0802143636	Nestor Porfirio	Rodriguez Estupinan	0961032846	04	34	
+0914148028	Romualdo 	Rodriguez Moreira	0851159155	04	34	
+1204311490	Jacinto Antonio	Rodriguez Tobar	0851159161	04	34	
+0911998961	Carlos Javier	Ruiz Larenas	0851159177	04	34	
+0914470794	Luis Roy	Sabando Posligua	0851159183	04	34	
+0905573226	Perez Johnny	San Andres	0851159209	04	34	
+0700894876	Luis 	Sanchez Paladines	0851159215	04	34	
+0901918623	Julio Arcenio	Sanchez Rodriguez	0871105403	04	34	
+0908698905	Gustavo Adolfo	Santana Galarza	0851159221	04	34	
+0914200431	Heriberto Gonzalo	Sarmiento Orna	0851159243	04	34	
+0912937398	Gabriel Oswaldo	Serrano Aulestia	0851159259	04	34	
+0917466815	Gustavo Antonio	Solis Rivas	0851159265	04	34	
+0921457594	Angel Miguel	Solis Toala	0851159271	04	34	
+0911966414	Manuel del Jesus	Solorzano Macias	0051551489	04	34	
+1200623252	Luis Agapito	Soto Arana	0851159287	04	34	
+0921491155	Emiliano Moises	Suarez Yagual	0851159293	04	34	
+0906452537	Francisco 	Tigrero Panchana	0851159303	04	34	
+0910858554	Pedro Aurelio	Tigrero Panchana	0851159319	04	34	
+0906372065	Freddy Augusto	Toala Soriano	0851159325	04	34	
+0914078654	Guillermo 	Tumbaco Arreaga	0851159347	04	34	
+0910947282	Jimmy Dolores	Velasquez Basurto	0961032868	04	34	
+1302173453	Justos German	Vera Burgos	0051580413	04	34	
+0911192110	Carlos Geardo	Vera Farino	0851159353	04	34	
+1307427698	Edison Juvenal	Vera Mendoza	0851159369	04	34	
+0909066441	Jesus Cristobal	Vera Merino	0851159375	04	34	
+0903830057	Luis Alberto	Villamar Viteri	0851159381	04	34	
+0930968698	Jonathan David	Yagual Pinargote	0851159407	04	34	
+0914868476	Juan Carlos	Zambrano Moreira	0851157151	04	34	
+1307322089	Ramon Heriberto	Zambrano Saltos	0002132964	  	34	
+0915808588	Lorena	Acosta Acosta	0002543006	04	34	
+1202086664	Betty Adelaida	Aguilar Echeverria	0041004147	04	34	
+0901904094	Alba Cecilia	Alarcon Soto	0002133230	04	34	
+0600056857	Holger Wilfrido	Albuja Coello	0002132832	04	34	
+0905567830	Jose Carlos	Alcivar Bowen	0002132920	04	34	
+1201287685	Luis Gerardo	Almeida Vasquez	0851159413	04	34	
+0915093629	Pedro Wilfrido	Alvarado Andino	0851253629	04	34	
+0915309496	Johnny Ignacio	Alvarado Dominguez	0851159429	04	34	
+0907281968	Zoila 	Alvarado Moncada	0961032094	04	34	
+0908226731	Roberto 	Alvarez Martinez	0021166043	04	34	
+0906654710	Ana 	Andrade Cespedes	0851159435	04	34	
+0917583767	Milton 	Andrade Laborde	0821044473	04	34	
+0909548786	Cesar Miguel	Andrade Martinez	0851253519	04	34	
+0902371459	Julio Daniel	Andrade Rodas	0851159441	04	34	
+0920869542	Ericka 	Angulo Bennett	1741010684	04	34	
+0917360455	Irma Angelica	Aquino Onofre	0851159457	04	34	
+0912171014	Jessica Julieta	Aroca Clavijo	0931071996	04	34	
+1302534605	Ines Maria	Arroba Salto	0002132678	04	34	
+1704188000	Josefa Esther	Arroba Salto	0002132684	04	34	
+0904217056	Jose Victor Hugo	Arrobo Reyes	0000845232	04	34	
+0907587778	Violeta 	Badaraco Delgado	0961033408	04	34	
+0904684453	Martha Cecilia	Balanzategui Yepez	0851159463	04	34	
+0909591208	Juan Emilio	Balas Leon	0002543090	04	34	
+0922268438	Vera 	Barriga Aveiga	0021343647	04	34	
+0909373144	Jenny Patricia	Benalcazar Arrata	0002132810	04	34	
+0909833238	Oscar Robert	Benavides Burgos	0002543144	03	34	
+0909935041	Tito Enrique	Benites Quintero	0005178539	04	34	
+0908731953	Lidia Jacqueline	Bermudez Johnson	0961032660	04	34	
+0913782777	Lorena del Carmen	Bodero Arizaga	0002132738	04	34	
+0901209304	Vicente Alberto	Borbor Santos	0851159479	04	34	
+0918741026	Carlos 	Briones Galarza	0021420731	04	34	
+0901014928	Fausto Felix	Cabrera Montes	0001253947	04	34	
+0906831607	Olga Isabel	Calderon Chico	0851159485	04	34	
+0900852146	Manuel Dionisio	Calderon Mazon	0001076469	04	34	
+0905197869	Marcial Sebastian	Calero Amores	0031221985	04	34	
+0905094157	Gabriel Agustin	Calero Solis	0851159491	04	34	
+0902212877	Edgar Segundo	Camino Torres	0002132986	04	34	
+0907821698	Hugo Federico	Campos Rocafuerte	0921088400	04	34	
+0901239087	Cirila Hilda	Campuzano Ycaza	0001480277	04	34	
+0915819585	Jose 	Cardenas Saenz	0851253569	04	34	
+0909797417	Hortensia Enriqueta	Carranza Rojas	0851159517	04	34	
+1701618132	Cesar Oswaldo	Carrera Chinga	0871104423	04	34	
+0905021648	Maria Enriqueta	Carvajal Alava	0001634525	04	34	
+0903880102	Isabel Ramona	Carvajal Arcos	0851159523	04	34	
+0916567407	Fanny Lorena	Castaneda Velez	0002132882	04	34	
+0906394713	Luis Felipe	Castillo Criollo	0851157195	04	34	
+1712263100	Hugo Ramiro	Castillo Lascano	0851253739	04	34	
+0905942579	Julio Cesar	Castro Rosado	0021343543	04	34	
+0908675044	Leonor 	Cedeno Sampertegui	0851234305	04	34	
+0904366713	Pacifico Eduardo	Centeno Marzana	0021043101	04	34	
+0903954725	Mariana Emperatriz	Cepeda Villalta	0851159545	04	34	
+0905317251	Blanca Maria	Cestonaro Salazar	0961032302	04	34	
+0905811683	Otto 	Cevallos Mieles	0001399903	04	34	
+0907646210	Jose Eduardo	Chica Pincay	0851159567	04	34	
+1701161687	Francisco Manuel	Cordova Jaime	0001475073	04	34	
+0900017427	Ukles Ramon	Cornejo Bustos	0961032682	04	34	
+0905846606	Pedro Gustavo	Correa Mendoza	0002133108	04	34	
+0908382542	Luis Enrique	Cortez Alvarado	0002132690	04	34	
+0915200042	Diana Vanessa	Cucalon Gaibor	0851159573	04	34	
+0905892253	Teresa del Rocio	De La Cadena Villacres	0021343537	04	34	
+0909502296	Juan Enrique	De La Cruz Ormaza	0041116437	03	34	
+0910045970	Jorge Eliecer	De Vera Alvarado	0855001036	04	34	
+0912819646	Alvarado Wladimir	Del Rosario	0002543078	04	34	
+0910273663	Stalin Agustin	Diaz Suarez	0851253679	04	34	
+0918119660	Alba Genoveva	Donoso Noboa	0851159595	04	34	
+1303722365	Maria Eugenia	Duenas Barberan	0851159605	04	34	
+0914840244	Angela 	Duque Gonzalez	0041092043	04	34	
+0904198546	Dora del Pilar	Egas Sellan	0851159611	04	34	
+0601112964	Judith del Carmen	Erazo Andino	0002132794	04	34	
+0903579415	Mario Antonio	Erazo Gonzalez	0851157117	04	34	
+0909452096	Grace 	Escobar Medina	0851253503	04	34	
+0903402303	Carlos 	Espinoza Acosta	0031273193	04	34	
+0907511505	Carlos Luis	Espinoza Cevallos	0851159627	04	34	
+0920279833	Angela 	Espinoza Gomez	0851253553	04	34	
+0900723073	Carlos Luis	Espinoza Proano	0002132772	04	34	
+0912081478	Cecibel 	Falconez Ramirez	0851253525	04	34	
+0920335122	Jose Luis	Ferez Vergara	0851159633	04	34	
+0909067977	Ana Patricia	Fernandez Chiriguaya	0021343593	04	34	
+0905612693	Areliza Jesus	Fernandez Cordova	0851159649	04	34	
+0919200766	Jacinto Jefferson	Flores Cagua	0951078120	04	34	
+0904164506	Piedad Elena	Flores Oviedo	0851059749	04	34	
+0200395838	Dora 	Franco Zavala	0851253723	04	34	
+0913791455	Giovanni Antonio	Freire Jaramillo	0002132804	04	34	
+0914020235	David 	Freire Sierra	0002542994	04	34	
+0908515307	Amalia 	Gabino Nevarez	0021416133	04	34	
+0910498229	Genaro 	Gaibor Espin	0021470495	04	34	
+0908903073	Karol Yalile	Garcia German	0002133252	04	34	
+0910571983	Rosa Victoria	Garcia Ronquillo	0851157123	04	34	
+0911566685	Edgar 	Garcia Sanchez	0021371921	04	34	
+0201457199	Ruth 	Garofalo Garcia	0851253657	04	34	
+0918185539	Yadira 	Garzon Moncayo	0002543122	04	34	
+0910256379	Gladys Guadalupe	Gavilanes Alvia	0851159677	04	34	
+0914800917	Jaime 	Gonzalez Betancourt	0851253745	04	34	
+0912368412	Azucena de Los Angeles	Gonzalez Carvajal	0001781491	04	34	
+0906653365	Wilfrido 	Gonzalez Cerezo	0002543150	04	34	
+0906579842	Frecia 	Gonzalez Holguin	0001282245	04	34	
+0919694505	Carla Judith	Gualoto Alcivar	0001965307	04	34	
+0914076450	Stalin 	Guaman Aguiar	0961032198	03	34	
+0908625056	Eva Marjoriet	Guerrero Lopez	0045009330	04	34	
+0913734836	Kennya 	Guzman Huayamabe	0841191809	04	34	
+0912498961	Abel 	Haro Pacha	0861037937	04	34	
+0912643533	Martha Beatriz	Hernandez Armendariz	0001281991	04	34	
+0916201569	July Roxana	Herrera Valencia	0001703475	04	34	
+0903306835	Ernesto Roberto	Hidalgo Gomez	0851159699	04	34	
+0905309233	Rosa Dolores	Hinojosa Dazza	0961032522	04	34	
+0900200718	Octavio 	Hinojosa Espin	0851253701	04	34	
+0903454122	 	Hinojosa Susana	0861075849	04	34	
+0916615487	Gisella Patricia	Hurel Franco	0841130093	04	34	
+0915999155	Estela Priscila	Hurtado Palmiro	0851159715	04	34	
+0913136883	Marisol Jacqueline Mercedes	Idrovo Avecillas	0921088384	04	34	
+0903513851	Martha 	Intriago Zambrano	0002133004	04	34	
+0902421775	Carlos Oswaldo	Izurieta Rodriguez	0851159721	04	34	
+0909046542	Rafael Alcides	Jaime Baquerizo	0861075833	04	34	
+0912828795	Patricia 	Jordan Armijos	0001420743	04	34	
+0906253893	Graciela Catalina	Jurado Rivadeneira	0851159737	04	34	
+0600903389	Luis Gilberto	Landy Campos	0851159743	04	34	
+0905892766	Gisella 	Larrea Ramirez	0841080385	04	34	
+0600338297	Luis Alfredo	Leon Brito	0851159765	04	34	
+0918878976	Luis Vicente	Leon Veliz	0061071801	04	34	
+0917054330	Monica Jackeline	Leoro Llerena	0831001563	04	34	
+0916100795	Maria Auxiliadora	Llerena Rada	0041144091	04	34	
+0924516578	Cindy Melissa	Loor Mero	0861114009	04	34	
+0917747222	Xavier 	Lopez Betancourt	0002543204	04	34	
+1202348882	Byron Gorky	Lopez Carriel	0851159771	04	34	
+0915819536	Julio 	Lucin Valarezo	0021416095	04	34	
+0903506590	Blanca Azucena	Luna Lopez	0002133186	04	34	
+0300803061	Efrain Alfonso	Luna Mejia	0001474933	04	34	
+0916069818	Oscar 	Machado Alvarez	0002133026	04	34	
+0915330138	Angela Alexandra	Maldonado Chiriboga	0951060518	04	34	
+0913057881	Guido 	Mantilla Buenano	0002543166	04	34	
+0900561903	Enrique Anibal	Mariduena Garaicoa	0021347821	04	34	
+0910920685	Sara 	Marin Ube	0855030153	04	34	
+0907096572	Gustavo Alejandro	Marriott Zurita	0002133060	04	34	
+0901340562	Carlos 	Martinez Andrade	0051580265	04	34	
+0913235727	Enrique Augusto	Martinez Garcia	0001896199	04	34	
+0912316338	Juan 	Martinez Intriago	0002543100	04	34	
+0901901660	Gustavo Alfonso	Martinez Jaime	0851159787	04	34	
+0909854143	Cecilia 	Mayorga Herrera	0051580271	04	34	
+0908504749	Roberto 	Medina Acuna	0851159803	04	34	
+0903609840	Armando 	Medina Gonzalez	0861040609	04	34	
+0909319964	Martha 	Medina Orellana	0851175137	04	34	
+0904898087	Mario Fernando	Mejia Alarcon	0951059488	04	34	
+0924370687	Gabriela 	Melo Hanna	0061105675	04	34	
+0916872963	Evangelina Auxiliadora	Mendez Encalada	0002132788	04	34	
+0908616055	Sergio 	Mendieta Jacome	0851253493	04	34	
+1302795016	Kleber 	Mendoza Corral	0002543194	04	34	
+0906175757	Flor de Maria	Merizalde Nicola	0021343559	04	34	
+1200795902	Marlene 	Merizalde Sellan	1721001658	04	34	
+1309585550	David Fabian	Mieles Velasquez	0851159825	04	34	
+0902654631	Segundo Arturo	Mora Garcia	0002132942	04	34	
+0913452314	Alfredo Ismael	Mora Portilla	0851032913	04	34	
+0908974371	Janeth Leticia	Mora Zapater	0021416045	04	34	
+0905703260	Gloria Margarita	Moreira Rodriguez	0851159847	04	34	
+1200446571	Leonel 	Mosquera Macias	0951091568	04	34	
+0908946262	Patricia Jacqueline	Munoz Verdezoto	0021343653	04	34	
+0900937921	Miguel Rodolfo	Murrieta Neumane	0961032792	04	34	
+0911780559	Aleyn Ala	Nieto Zambrano	0002132612	04	34	
+0702423930	Veronica 	Ochoa Hidalgo	0002542988	04	34	
+0906519475	Vicente 	Ordonez Aleman	0001406441	04	34	
+0918015397	Marjorie 	Ordonez Guartasaca	0851253635	04	34	
+0912907722	Darwin Daniel	Ordonez Iturralde	0851159869	04	34	
+0913866190	Rosa Elena	Ordonez Vivero	0002133164	04	34	
+0910751668	Camila 	Orellana Lara	0061096649	04	34	
+0910690361	Blanca 	Ortega Lopez	0002543062	04	34	
+0905442174	Leonor Patricia	Ortega Ramirez	0851159875	04	34	
+0903454957	Martha Clotilde	Palacios Chacon	0021230443	04	34	
+0902255488	Walter Alfredo	Palacios Sanchez	0851159881	04	34	
+0916431281	Nelly 	Panchi Castro	0002543034	04	34	
+0912946993	Alberto 	Paredes Ochoa	0021470511	04	34	
+0911828150	Pablo 	Paredes Ramos	0851159897	04	34	
+0917278012	Ruben Dario	Paz Morales	0851159907	03	34	
+0911930857	Jose Ernesto	Pazmino Enriquez	0005195822	04	34	
+0915428973	Jose 	Pelaez Freire	0031273203	04	34	
+0905472684	Victor Hugo	Pena Tomala	0002132854	04	34	
+0905059515	Gioconda del Mar	Penaherrera Camposano	0008013638	04	34	
+0906327465	Maria Lorena	Perez Alarcon	0002133158	04	34	
+0905888038	Grace Margarita	Pesantez Cedeno	0001282185	04	34	
+0908633308	Zoila Filomena	Pesantez Cedeno	0002133032	04	34	
+0909116436	Nilo Alfredo	Poveda Cisneros	0861047911	04	34	
+0900147521	Jesus Huadimi	Poveda Garcia	0961032824	03	34	
+0910756121	Richard 	Proano Mosquera	0001827237	04	34	
+0920711918	Gabriel 	Proano Pena	0851159913	04	34	
+0907951909	William Rolando	Quimi Delgado	0021343587	04	34	
+0909493835	Paula Dolores	Ramirez Yepez	0851159929	04	34	
+0917494833	Javier 	Raza Caicedo	0001547677	04	34	
+0911296382	David 	Reyes Andrade	1741003046	04	34	
+0914782081	Jose 	Reyes Morales	0002543138	04	34	
+0906610910	Rodolfo Gustavo	Rhor Chon Qui	0851159935	04	34	
+0909182727	Carlos Ivan	Riofrio Alvarez	0851159941	03	34	
+0908432792	Roberto Javier	Rodriguez Nunez	5005031811	04	34	
+0913774865	Ketty 	Rodriguez Rodriguez	0002543116	04	34	
+1801457522	Josue 	Rodriguez Santos	0851253487	04	34	
+0906049176	Manuel 	Rodriguez Tapia	0021416177	04	34	
+0908800535	Veronica 	Rojas Vera	0001609923	04	34	
+0906915038	Gustavo Adolfo	Roman Garcia	0961033398	03	34	
+0916024433	Diego Jose	Romero Oseguera	0005204845	04	34	
+1200775706	Sixto 	Ronquillo Briones	0002543056	04	34	
+0910767516	Monica Lorena	Rovira Diaz	0851159963	04	34	
+0906521018	Ana Ivette	Rubio Miranda	0002133246	04	34	
+1801801869	Anibal Neptali	Salazar Escobar	0001724331	04	34	
+1708029978	Wagner 	Salazar Sanchez	0851253613	04	34	
+0918720798	Ricardo David	Salcedo Lascano	0002133170	04	34	
+0906783048	Jeanneth Paquita	Salvador Brito	0001374027	04	34	
+0905553491	Luis Enrique	Sanchez Correa	0851159979	04	34	
+0900162637	Colon Fernando	Santistevan Yepez	0061038867	04	34	
+0914388665	Carlos 	Sarmiento Bayas	0061187875	04	34	
+0906786108	Jose Miguel	Sernaque Armijos	0051580369	04	34	
+0910043173	Magda 	Solis Mera	1741002928	04	34	
+0903486421	Carmen Jannina	Soto Calle	0851159985	03	34	
+0907501050	Susana 	Sotomayor Robles	0005056727	04	34	
+0703440842	Herman Vladimir	Sozoranga Sandoval	0851157101	04	34	
+0907816706	Gaston Guillermo	Suarez Gallegos	0851159991	04	34	
+1200449096	Domingo Efren	Tapia Aviles	0851160009	04	34	
+0912967288	Manuel Antonio	Tenesaca Gavilanez	0851160015	04	34	
+0914363452	Myriam Tatiana	Tola Cisneros	0021347799	04	34	
+0911074573	Xavier Humberto	Torres Freres	0061060831	04	34	
+0901599118	Jose 	Torres Lopez	0941224162	04	34	
+0912099355	Christian Juan	Torres Medina	0002132716	04	34	
+0905533899	Jose Edmundo	Torres Miranda	0851160043	04	34	
+0905467098	Jorge Bernardino	Torres Prieto	0851160059	04	34	
+1201075213	Soraya 	Trivino Bloisse	0011140135	04	34	
+0904977063	Jose Guillermo	Valdez Diaz	0002132958	04	34	
+0912147998	Enrique 	Valencia Herrera	0021470527	04	34	
+0909084337	Francisco 	Valle Sanchez	0851253717	04	34	
+0906340740	David Armando	Vallet Carroza	0851160065	04	34	
+0918586306	Federico Guillermo	Varas Chiquito	0851160071	04	34	
+0901988444	Olga Pilar	Vargas Coello	0951028796	04	34	
+0908211444	Leyla 	Velarde Pinargote	0851253607	04	34	
+0903958437	Rebeca Isabel	Vera Asang	0021027691	04	34	
+0904863370	Otto Franklin	Vera Moran	0851160087	04	34	
+0909147209	Rosa Elina	Verdezoto Martinez	0002133142	04	34	
+0907782155	Adolfo 	Villacreses Vera	1741003128	04	34	
+0916123029	Monica Margot	Villamar Mendoza	0851160093	04	34	
+0907734719	Monica 	Villao Reyes	0041098897	04	34	
+0918581067	Washington 	Villavicencio Santillan	0002543210	04	34	
+0911450914	Carlos Luis	Villegas Sanchez	0851160103	04	34	
+0904527256	Cristina Gladys	Vizcaino Ronquillo	0002132848	04	34	
+0908987522	Jorge Mauricio	Vizcaino Ronquillo	0811011653	04	34	
+0917298283	Fernando 	Yuqui Benalcazar	0002543188	04	34	
+1201185244	Geovanny 	Zambrano Bermudez	0851253471	04	34	
+1705917977	Fulton Teodomiro	Zambrano Saltos	0921088390	04	34	
+0906420559	Fanny 	Zuna Carchipulla	0002542972	04	34	
+0906081864	Rosa 	Zuniga Paredes	0021470505	  	34	
+\.
+
+
+--
+-- Data for Name: empleado_departamento; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY empleado_departamento (cedula, id_departamento, fecha_final, estado) FROM stdin;
+0100416791	5	\N	t
+0200395838	45	\N	t
+0201457199	46	\N	t
+0300803061	42	\N	t
+0600056857	43	\N	t
+0600338297	42	\N	t
+0600903389	43	\N	t
+0601112964	54	\N	t
+0602046427	19	\N	t
+0602404527	15	\N	t
+0700894876	21	\N	t
+0701519258	15	\N	t
+0701800302	4	\N	t
+0702423930	40	\N	t
+0703440842	41	\N	t
+0703617993	22	\N	t
+0801716101	30	\N	t
+0802143636	32	\N	t
+0900017427	46	\N	t
+0900147521	43	\N	t
+0900162637	40	\N	t
+0900200718	53	\N	t
+0900561903	46	\N	t
+0900723073	47	\N	t
+0900852146	47	\N	t
+0900937921	47	\N	t
+0901014928	53	\N	t
+0901209304	43	\N	t
+0901239087	44	\N	t
+0901340562	53	\N	t
+0901583864	9	\N	t
+0901599118	46	\N	t
+0901859629	5	\N	t
+0901887547	30	\N	t
+0901901660	53	\N	t
+0901904094	42	\N	t
+0901918623	30	\N	t
+0901988444	44	\N	t
+0902066851	24	\N	t
+0902212877	47	\N	t
+0902255488	49	\N	t
+0902371459	47	\N	t
+0902421775	47	\N	t
+0902654631	52	\N	t
+0903247534	31	\N	t
+0903306835	49	\N	t
+0903402303	47	\N	t
+0903454122	41	\N	t
+0903454957	45	\N	t
+0903486421	54	\N	t
+0903506590	47	\N	t
+0903513851	52	\N	t
+0903579415	47	\N	t
+0903609840	41	\N	t
+0903830057	38	\N	t
+0903880102	44	\N	t
+0903932598	19	\N	t
+0903954725	52	\N	t
+0903958437	45	\N	t
+0904164506	52	\N	t
+0904198546	54	\N	t
+0904217056	44	\N	t
+0904366713	47	\N	t
+0904527256	45	\N	t
+0904684453	44	\N	t
+0904715661	31	\N	t
+0904738911	5	\N	t
+0904863370	51	\N	t
+0904898087	45	\N	t
+0904977063	40	\N	t
+0904988854	31	\N	t
+0905021648	49	\N	t
+0905059515	49	\N	t
+0905094157	48	\N	t
+0905197521	7	\N	t
+0905197869	49	\N	t
+0905232914	35	\N	t
+0905309233	47	\N	t
+0905317251	44	\N	t
+0905442174	51	\N	t
+0905467098	41	\N	t
+0905468997	33	\N	t
+0905472684	49	\N	t
+0905533899	40	\N	t
+0905536140	20	\N	t
+0905553491	40	\N	t
+0905565917	5	\N	t
+0905567830	42	\N	t
+0905573226	32	\N	t
+0905583142	7	\N	t
+0905612693	40	\N	t
+0905703260	43	\N	t
+0905715900	30	\N	t
+0905722971	21	\N	t
+0905799094	35	\N	t
+0905811683	46	\N	t
+0905846606	47	\N	t
+0905863205	21	\N	t
+0905888038	49	\N	t
+0905892253	50	\N	t
+0905892766	52	\N	t
+0905919890	30	\N	t
+0905938908	21	\N	t
+0905942579	40	\N	t
+0906049176	47	\N	t
+0906077144	30	\N	t
+0906081864	47	\N	t
+0906151014	13	\N	t
+0906167176	34	\N	t
+0906175757	51	\N	t
+0906211073	30	\N	t
+0906253893	53	\N	t
+0906327465	50	\N	t
+0906340740	52	\N	t
+0906372065	30	\N	t
+0906394713	41	\N	t
+0906420559	47	\N	t
+0906452537	34	\N	t
+0906521018	47	\N	t
+0906579842	40	\N	t
+0906601307	18	\N	t
+0906610910	49	\N	t
+0906632658	30	\N	t
+0906642947	30	\N	t
+0906648688	11	\N	t
+0906653365	43	\N	t
+0906654710	48	\N	t
+0906783048	52	\N	t
+0906786108	43	\N	t
+0906825393	13	\N	t
+0906831607	48	\N	t
+0906915038	46	\N	t
+0907096572	46	\N	t
+0907163760	5	\N	t
+0907240519	4	\N	t
+0907281968	46	\N	t
+0907350847	7	\N	t
+0907501050	50	\N	t
+0907511505	48	\N	t
+0907587778	46	\N	t
+0907646210	42	\N	t
+0907679906	13	\N	t
+0907696728	7	\N	t
+0907734719	52	\N	t
+0907754113	35	\N	t
+0907782155	53	\N	t
+0907816706	40	\N	t
+0907821698	40	\N	t
+0907887269	1	\N	t
+0907951909	48	\N	t
+0908036726	36	\N	t
+0908211444	48	\N	t
+0908226731	47	\N	t
+0908382542	42	\N	t
+0908432792	50	\N	t
+0908498181	8	\N	t
+0908504749	48	\N	t
+0908515307	42	\N	t
+0908616055	46	\N	t
+0908625056	40	\N	t
+0908633308	43	\N	t
+0908634728	37	\N	t
+0908650138	17	\N	t
+0908675044	51	\N	t
+0908681513	19	\N	t
+0908698905	39	\N	t
+0908731953	47	\N	t
+0908800535	40	\N	t
+0908903073	43	\N	t
+0908946262	52	\N	t
+0908959638	27	\N	t
+0908974371	45	\N	t
+0908987522	45	\N	t
+0908993918	20	\N	t
+0909046542	40	\N	t
+0909066441	35	\N	t
+0909067852	30	\N	t
+0909067977	44	\N	t
+0909084337	44	\N	t
+0909116436	40	\N	t
+0909141160	31	\N	t
+0909147209	51	\N	t
+0909181711	32	\N	t
+0909182180	1	\N	t
+0909182727	41	\N	t
+0909256885	57	\N	t
+0909283772	21	\N	t
+0909319964	45	\N	t
+0909373144	51	\N	t
+0909452096	52	\N	t
+0909493835	40	\N	t
+0909502296	42	\N	t
+0909508558	31	\N	t
+0909515488	12	\N	t
+0909548786	42	\N	t
+0909561680	32	\N	t
+0909591208	47	\N	t
+0909599474	9	\N	t
+0909616708	4	\N	t
+0909720856	1	\N	t
+0909762783	35	\N	t
+0909797417	42	\N	t
+0909799793	4	\N	t
+0909833238	53	\N	t
+0909854143	49	\N	t
+0909864902	4	\N	t
+0909877987	31	\N	t
+0909935041	44	\N	t
+0910043173	40	\N	t
+0910045970	52	\N	t
+0910089515	31	\N	t
+0910220540	21	\N	t
+0910256379	43	\N	t
+0910272129	2	\N	t
+0910273663	48	\N	t
+0910322221	6	\N	t
+0910389170	13	\N	t
+0910498229	49	\N	t
+0910564673	6	\N	t
+0910571983	47	\N	t
+0910690361	46	\N	t
+0910711829	15	\N	t
+0910738897	32	\N	t
+0910751668	44	\N	t
+0910756121	46	\N	t
+0910767516	48	\N	t
+0910858554	32	\N	t
+0910920685	40	\N	t
+0910920925	17	\N	t
+0910947282	35	\N	t
+0910947886	32	\N	t
+0911037950	6	\N	t
+0911074573	45	\N	t
+0911175677	25	\N	t
+0911192110	35	\N	t
+0911225381	1	\N	t
+0911291094	23	\N	t
+0911296382	40	\N	t
+0911318798	5	\N	t
+0911450914	47	\N	t
+0911488930	30	\N	t
+0911529295	5	\N	t
+0911566685	43	\N	t
+0911742336	32	\N	t
+0911780559	44	\N	t
+0911828150	49	\N	t
+0911930857	40	\N	t
+0911966414	32	\N	t
+0911998961	32	\N	t
+0912081478	51	\N	t
+0912090792	19	\N	t
+0912099355	45	\N	t
+0912130317	6	\N	t
+0912147998	40	\N	t
+0912148376	1	\N	t
+0912171014	43	\N	t
+0912212263	32	\N	t
+0912268109	18	\N	t
+0912316338	46	\N	t
+0912368412	47	\N	t
+0912498961	52	\N	t
+0912504826	4	\N	t
+0912555653	30	\N	t
+0912600236	31	\N	t
+0912643533	44	\N	t
+0912819646	47	\N	t
+0912828795	47	\N	t
+0912896685	4	\N	t
+0912906070	8	\N	t
+0912907722	47	\N	t
+0912937398	32	\N	t
+0912946993	40	\N	t
+0912967288	40	\N	t
+0912987955	30	\N	t
+0913045993	19	\N	t
+0913057881	47	\N	t
+0913136883	44	\N	t
+0913169132	19	\N	t
+0913235727	40	\N	t
+0913316642	1	\N	t
+0913452314	50	\N	t
+0913568952	8	\N	t
+0913734836	51	\N	t
+0913774865	44	\N	t
+0913778627	6	\N	t
+0913782777	52	\N	t
+0913784690	21	\N	t
+0913791455	52	\N	t
+0913866190	40	\N	t
+0913904009	35	\N	t
+0913930327	33	\N	t
+0913936670	18	\N	t
+0914020235	41	\N	t
+0914074505	32	\N	t
+0914076450	40	\N	t
+0914078654	21	\N	t
+0914114236	30	\N	t
+0914148028	30	\N	t
+0914200431	32	\N	t
+0914361407	1	\N	t
+0914363452	44	\N	t
+0914388665	40	\N	t
+0914430095	28	\N	t
+0914470794	32	\N	t
+0914554373	32	\N	t
+0914621099	21	\N	t
+0914633557	3	\N	t
+0914633946	30	\N	t
+0914634670	4	\N	t
+0914661996	21	\N	t
+0914761366	12	\N	t
+0914782081	44	\N	t
+0914793732	35	\N	t
+0914798889	16	\N	t
+0914800917	48	\N	t
+0914840244	40	\N	t
+0914868476	30	\N	t
+0914910369	30	\N	t
+0915093629	45	\N	t
+0915109490	8	\N	t
+0915198790	5	\N	t
+0915200042	41	\N	t
+0915255277	1	\N	t
+0915261127	18	\N	t
+0915264980	30	\N	t
+0915309496	42	\N	t
+0915315923	32	\N	t
+0915330138	44	\N	t
+0915330179	13	\N	t
+0915397301	8	\N	t
+0915428973	40	\N	t
+0915560403	10	\N	t
+0915574768	29	\N	t
+0915586564	5	\N	t
+0915740138	8	\N	t
+0915801955	32	\N	t
+0915808588	41	\N	t
+0915819536	43	\N	t
+0915819585	44	\N	t
+0915852800	35	\N	t
+0915934343	32	\N	t
+0915999155	40	\N	t
+0916018732	34	\N	t
+0916024433	46	\N	t
+0916069818	47	\N	t
+0916100795	51	\N	t
+0916123029	41	\N	t
+0916201569	53	\N	t
+0916212715	13	\N	t
+0916243488	5	\N	t
+0916323835	30	\N	t
+0916384571	34	\N	t
+0916388010	4	\N	t
+0916402803	5	\N	t
+0916431281	44	\N	t
+0916485444	55	\N	t
+0916489552	13	\N	t
+0916518780	32	\N	t
+0916567407	40	\N	t
+0916615487	40	\N	t
+0916660921	4	\N	t
+0916682669	32	\N	t
+0916872963	41	\N	t
+0917054330	43	\N	t
+0917139958	11	\N	t
+0917230955	11	\N	t
+0917241887	35	\N	t
+0917242471	25	\N	t
+0917266488	30	\N	t
+0917278012	43	\N	t
+0917298283	47	\N	t
+0917360455	47	\N	t
+0917433120	4	\N	t
+0917455115	4	\N	t
+0917456766	11	\N	t
+0917466815	30	\N	t
+0917490450	16	\N	t
+0917494833	40	\N	t
+0917569832	35	\N	t
+0917570186	11	\N	t
+0917572695	4	\N	t
+0917583767	49	\N	t
+0917607434	32	\N	t
+0917636862	4	\N	t
+0917700049	30	\N	t
+0917759110	4	\N	t
+0918015397	47	\N	t
+0918072042	16	\N	t
+0918119660	51	\N	t
+0918133562	4	\N	t
+0918185539	47	\N	t
+0918213067	5	\N	t
+0918280637	8	\N	t
+0918433442	4	\N	t
+0918576281	4	\N	t
+0918581067	42	\N	t
+0918586306	42	\N	t
+0918587148	4	\N	t
+0918720798	40	\N	t
+0918731407	23	\N	t
+0918741026	53	\N	t
+0918757576	17	\N	t
+0918760919	32	\N	t
+0918786153	18	\N	t
+0918798448	1	\N	t
+0918834045	4	\N	t
+0918854639	4	\N	t
+0918878976	45	\N	t
+0919171819	30	\N	t
+0919200766	48	\N	t
+0919289439	4	\N	t
+0919558452	26	\N	t
+0919586032	32	\N	t
+0919688960	8	\N	t
+0919694505	51	\N	t
+0919705228	4	\N	t
+0919717108	4	\N	t
+0919754267	11	\N	t
+0919757344	25	\N	t
+0919761478	26	\N	t
+0919770651	55	\N	t
+0920101193	32	\N	t
+0920164878	32	\N	t
+0920279833	46	\N	t
+0920317781	30	\N	t
+0920335122	42	\N	t
+0920379237	35	\N	t
+0920414224	17	\N	t
+0920525839	32	\N	t
+0920602356	1	\N	t
+0920603198	30	\N	t
+0920711918	53	\N	t
+0920854080	11	\N	t
+0920869542	41	\N	t
+0920985322	32	\N	t
+0921273058	3	\N	t
+0921314936	32	\N	t
+0921338646	4	\N	t
+0921457594	30	\N	t
+0921491155	30	\N	t
+0921626875	4	\N	t
+0921899381	26	\N	t
+0921917860	8	\N	t
+0921974978	8	\N	t
+0922268438	50	\N	t
+0922388061	8	\N	t
+0922571773	32	\N	t
+0922688429	32	\N	t
+0922711692	19	\N	t
+0922901319	5	\N	t
+0923002133	12	\N	t
+0923359707	2	\N	t
+0923550073	4	\N	t
+0923986079	23	\N	t
+0924038243	3	\N	t
+0924370687	45	\N	t
+0924740319	32	\N	t
+0925484925	2	\N	t
+0925513384	32	\N	t
+0925650665	20	\N	t
+0926278235	9	\N	t
+0926425893	17	\N	t
+0926447855	4	\N	t
+0926570284	17	\N	t
+0926587353	18	\N	t
+0926655432	32	\N	t
+0926869801	30	\N	t
+0926966128	4	\N	t
+0929689693	4	\N	t
+0930968698	32	\N	t
+0950071613	2	\N	t
+0950855064	21	\N	t
+0950855064	30	\N	t
+1200446571	47	\N	t
+1200449096	52	\N	t
+1200623252	38	\N	t
+1200775706	40	\N	t
+1200795902	41	\N	t
+1200875894	21	\N	t
+1201075213	52	\N	t
+1201287685	44	\N	t
+1202086664	41	\N	t
+1202150833	14	\N	t
+1202348882	40	\N	t
+1202469621	15	\N	t
+1203001621	30	\N	t
+1203166028	32	\N	t
+1203767957	15	\N	t
+1203802226	1	\N	t
+1204311490	30	\N	t
+1205121195	12	\N	t
+1301316806	30	\N	t
+1301790075	35	\N	t
+1302173453	30	\N	t
+1302534605	40	\N	t
+1302795016	46	\N	t
+1303174336	30	\N	t
+1303192627	38	\N	t
+1303465270	36	\N	t
+1303569576	35	\N	t
+1303722365	50	\N	t
+1303803231	1	\N	t
+1304409541	32	\N	t
+1305446195	34	\N	t
+1306081397	30	\N	t
+1306411925	21	\N	t
+1307094613	5	\N	t
+1307322089	32	\N	t
+1307427698	30	\N	t
+1308095221	1	\N	t
+1308282647	4	\N	t
+1308605979	35	\N	t
+1308628740	12	\N	t
+1309585550	46	\N	t
+1310410376	13	\N	t
+1310902588	32	\N	t
+1311024002	32	\N	t
+1311982860	30	\N	t
+1701161687	53	\N	t
+1701618132	47	\N	t
+1704188000	40	\N	t
+1705917977	40	\N	t
+1706886387	5	\N	t
+1708029978	46	\N	t
+1712263100	44	\N	t
+1718284894	12	\N	t
+1801457522	53	\N	t
+1801801869	40	\N	t
+\.
+
+
+--
+-- Data for Name: funcion; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY funcion (cedula, tipo) FROM stdin;
+0910272129	ADMINISTRATIVO
+0925484925	ADMINISTRATIVO
+0914633557	ADMINISTRATIVO
+0918854639	ADMINISTRATIVO
+0915586564	ADMINISTRATIVO
+0907696728	ADMINISTRATIVO
+0919757344	ADMINISTRATIVO
+0922901319	ADMINISTRATIVO
+0921917860	ADMINISTRATIVO
+1303803231	ADMINISTRATIVO
+0909599474	ADMINISTRATIVO
+0915560403	ADMINISTRATIVO
+0922388061	ADMINISTRATIVO
+0919289439	ADMINISTRATIVO
+0906648688	ADMINISTRATIVO
+0917636862	ADMINISTRATIVO
+1718284894	ADMINISTRATIVO
+0912130317	ADMINISTRATIVO
+0901583864	ADMINISTRATIVO
+0915255277	ADMINISTRATIVO
+0908681513	ADMINISTRATIVO
+0917455115	ADMINISTRATIVO
+0918433442	ADMINISTRATIVO
+0919770651	ADMINISTRATIVO
+1310410376	ADMINISTRATIVO
+1202150833	ADMINISTRATIVO
+0918133562	ADMINISTRATIVO
+1706886387	ADMINISTRATIVO
+0703617993	ADMINISTRATIVO
+0916485444	ADMINISTRATIVO
+0916243488	ADMINISTRATIVO
+1202469621	ADMINISTRATIVO
+0917456766	ADMINISTRATIVO
+0921899381	ADMINISTRATIVO
+0914361407	ADMINISTRATIVO
+0915198790	ADMINISTRATIVO
+0913778627	ADMINISTRATIVO
+1308095221	ADMINISTRATIVO
+0904738911	ADMINISTRATIVO
+0915740138	ADMINISTRATIVO
+0926425893	ADMINISTRATIVO
+0912504826	ADMINISTRATIVO
+0909256885	ADMINISTRATIVO
+1205121195	ADMINISTRATIVO
+0913936670	ADMINISTRATIVO
+0916660921	ADMINISTRATIVO
+0910564673	ADMINISTRATIVO
+0917572695	ADMINISTRATIVO
+0917570186	ADMINISTRATIVO
+0602404527	ADMINISTRATIVO
+0903932598	ADMINISTRATIVO
+0905536140	ADMINISTRATIVO
+0923550073	ADMINISTRATIVO
+0926278235	ADMINISTRATIVO
+0915397301	ADMINISTRATIVO
+0701800302	ADMINISTRATIVO
+0906151014	ADMINISTRATIVO
+0914621099	ADMINISTRATIVO
+0602046427	ADMINISTRATIVO
+0915109490	ADMINISTRATIVO
+0909515488	ADMINISTRATIVO
+1307094613	ADMINISTRATIVO
+0918280637	ADMINISTRATIVO
+0909864902	ADMINISTRATIVO
+0907240519	ADMINISTRATIVO
+0918786153	ADMINISTRATIVO
+0910220540	ADMINISTRATIVO
+0923986079	ADMINISTRATIVO
+0923359707	ADMINISTRATIVO
+0916489552	ADMINISTRATIVO
+0902066851	ADMINISTRATIVO
+0907350847	ADMINISTRATIVO
+0921974978	ADMINISTRATIVO
+0905565917	ADMINISTRATIVO
+1203767957	ADMINISTRATIVO
+0913784690	ADMINISTRATIVO
+0920414224	ADMINISTRATIVO
+0911529295	ADMINISTRATIVO
+0915330179	ADMINISTRATIVO
+0701519258	ADMINISTRATIVO
+0909616708	ADMINISTRATIVO
+0911175677	ADMINISTRATIVO
+0906601307	ADMINISTRATIVO
+0924038243	ADMINISTRATIVO
+0912896685	ADMINISTRATIVO
+0901859629	ADMINISTRATIVO
+0921338646	ADMINISTRATIVO
+0916212715	ADMINISTRATIVO
+0910920925	ADMINISTRATIVO
+0910711829	ADMINISTRATIVO
+0911225381	ADMINISTRATIVO
+0917242471	ADMINISTRATIVO
+0914761366	ADMINISTRATIVO
+0915261127	ADMINISTRATIVO
+1203802226	ADMINISTRATIVO
+0908650138	ADMINISTRATIVO
+0906825393	ADMINISTRATIVO
+0950071613	ADMINISTRATIVO
+0912268109	ADMINISTRATIVO
+0917230955	ADMINISTRATIVO
+0908959638	ADMINISTRATIVO
+0918213067	ADMINISTRATIVO
+0909799793	ADMINISTRATIVO
+0926587353	ADMINISTRATIVO
+0910322221	ADMINISTRATIVO
+0909720856	ADMINISTRATIVO
+0909182180	ADMINISTRATIVO
+0912906070	ADMINISTRATIVO
+0919558452	ADMINISTRATIVO
+0905583142	ADMINISTRATIVO
+0917490450	ADMINISTRATIVO
+0919761478	ADMINISTRATIVO
+0917759110	ADMINISTRATIVO
+0918757576	ADMINISTRATIVO
+0913316642	ADMINISTRATIVO
+0918587148	ADMINISTRATIVO
+0929689693	ADMINISTRATIVO
+1308628740	ADMINISTRATIVO
+0920602356	ADMINISTRATIVO
+0912090792	ADMINISTRATIVO
+0911318798	ADMINISTRATIVO
+0910389170	ADMINISTRATIVO
+0918834045	ADMINISTRATIVO
+0918576281	ADMINISTRATIVO
+0911037950	ADMINISTRATIVO
+0913568952	ADMINISTRATIVO
+0919754267	ADMINISTRATIVO
+0914634670	ADMINISTRATIVO
+0907679906	ADMINISTRATIVO
+0913045993	ADMINISTRATIVO
+0921273058	ADMINISTRATIVO
+0926447855	ADMINISTRATIVO
+0918798448	ADMINISTRATIVO
+0917139958	ADMINISTRATIVO
+0914430095	ADMINISTRATIVO
+0913169132	ADMINISTRATIVO
+0916402803	ADMINISTRATIVO
+0918731407	ADMINISTRATIVO
+0917433120	ADMINISTRATIVO
+0905197521	ADMINISTRATIVO
+0926570284	ADMINISTRATIVO
+0908993918	ADMINISTRATIVO
+0912148376	ADMINISTRATIVO
+0911291094	ADMINISTRATIVO
+0907887269	ADMINISTRATIVO
+0100416791	ADMINISTRATIVO
+0923002133	ADMINISTRATIVO
+0919717108	ADMINISTRATIVO
+0918072042	ADMINISTRATIVO
+0916388010	ADMINISTRATIVO
+0922711692	ADMINISTRATIVO
+0915574768	ADMINISTRATIVO
+0919688960	ADMINISTRATIVO
+0907163760	ADMINISTRATIVO
+1308282647	ADMINISTRATIVO
+0921626875	ADMINISTRATIVO
+0926966128	ADMINISTRATIVO
+0920854080	ADMINISTRATIVO
+0919705228	ADMINISTRATIVO
+0914798889	ADMINISTRATIVO
+0908498181	ADMINISTRATIVO
+0925650665	ADMINISTRATIVO
+0912555653	SERVICIOS
+0904988854	SERVICIOS
+0906642947	SERVICIOS
+0906632658	SERVICIOS
+0914554373	SERVICIOS
+0914114236	SERVICIOS
+0919586032	SERVICIOS
+0920525839	SERVICIOS
+0909141160	SERVICIOS
+0905468997	SERVICIOS
+0914661996	SERVICIOS
+0912600236	SERVICIOS
+1203001621	SERVICIOS
+0950855064	SERVICIOS
+1306081397	SERVICIOS
+0926655432	SERVICIOS
+1310902588	SERVICIOS
+1305446195	SERVICIOS
+0920985322	SERVICIOS
+0911742336	SERVICIOS
+0916518780	SERVICIOS
+1308605979	SERVICIOS
+0924740319	SERVICIOS
+0915934343	SERVICIOS
+1306411925	SERVICIOS
+0918760919	SERVICIOS
+0904715661	SERVICIOS
+0920164878	SERVICIOS
+0922688429	SERVICIOS
+1311024002	SERVICIOS
+0920603198	SERVICIOS
+0920379237	SERVICIOS
+0905722971	SERVICIOS
+0922571773	SERVICIOS
+0914074505	SERVICIOS
+0909283772	SERVICIOS
+1200875894	SERVICIOS
+0909762783	SERVICIOS
+0906077144	SERVICIOS
+0905715900	SERVICIOS
+0919171819	SERVICIOS
+1303465270	SERVICIOS
+0910089515	SERVICIOS
+0917607434	SERVICIOS
+0925513384	SERVICIOS
+0914910369	SERVICIOS
+0905863205	SERVICIOS
+0909181711	SERVICIOS
+0909561680	SERVICIOS
+0913930327	SERVICIOS
+0916323835	SERVICIOS
+0921314936	SERVICIOS
+0915801955	SERVICIOS
+0905938908	SERVICIOS
+0905799094	SERVICIOS
+0903247534	SERVICIOS
+0917241887	SERVICIOS
+0906167176	SERVICIOS
+0910947886	SERVICIOS
+0908634728	SERVICIOS
+0926869801	SERVICIOS
+0909508558	SERVICIOS
+0901887547	SERVICIOS
+0910738897	SERVICIOS
+0801716101	SERVICIOS
+1311982860	SERVICIOS
+0912987955	SERVICIOS
+0906211073	SERVICIOS
+0912212263	SERVICIOS
+0909067852	SERVICIOS
+0916384571	SERVICIOS
+1301316806	SERVICIOS
+0914793732	SERVICIOS
+0916682669	SERVICIOS
+1303192627	SERVICIOS
+0920101193	SERVICIOS
+0917266488	SERVICIOS
+1304409541	SERVICIOS
+0909877987	SERVICIOS
+0917700049	SERVICIOS
+0905919890	SERVICIOS
+0917569832	SERVICIOS
+1303569576	SERVICIOS
+1303174336	SERVICIOS
+1203166028	SERVICIOS
+0920317781	SERVICIOS
+0915852800	SERVICIOS
+1301790075	SERVICIOS
+0916018732	SERVICIOS
+0908036726	SERVICIOS
+0911488930	SERVICIOS
+0907754113	SERVICIOS
+0915264980	SERVICIOS
+0913904009	SERVICIOS
+0905232914	SERVICIOS
+0914633946	SERVICIOS
+0915315923	SERVICIOS
+0802143636	SERVICIOS
+0914148028	SERVICIOS
+1204311490	SERVICIOS
+0911998961	SERVICIOS
+0914470794	SERVICIOS
+0905573226	SERVICIOS
+0700894876	SERVICIOS
+0901918623	SERVICIOS
+0908698905	SERVICIOS
+0914200431	SERVICIOS
+0912937398	SERVICIOS
+0917466815	SERVICIOS
+0921457594	SERVICIOS
+0911966414	SERVICIOS
+1200623252	SERVICIOS
+0921491155	SERVICIOS
+0906452537	SERVICIOS
+0910858554	SERVICIOS
+0906372065	SERVICIOS
+0914078654	SERVICIOS
+0910947282	SERVICIOS
+1302173453	SERVICIOS
+0911192110	SERVICIOS
+1307427698	SERVICIOS
+0909066441	SERVICIOS
+0903830057	SERVICIOS
+0930968698	SERVICIOS
+0914868476	SERVICIOS
+1307322089	SERVICIOS
+0915808588	DOCENTES
+1202086664	DOCENTES
+0901904094	DOCENTES
+0600056857	DOCENTES
+0905567830	DOCENTES
+1201287685	DOCENTES
+0915093629	DOCENTES
+0915309496	DOCENTES
+0907281968	DOCENTES
+0908226731	DOCENTES
+0906654710	DOCENTES
+0917583767	DOCENTES
+0909548786	DOCENTES
+0902371459	DOCENTES
+0920869542	DOCENTES
+0917360455	DOCENTES
+0912171014	DOCENTES
+1302534605	DOCENTES
+1704188000	DOCENTES
+0904217056	DOCENTES
+0907587778	DOCENTES
+0904684453	DOCENTES
+0909591208	DOCENTES
+0922268438	DOCENTES
+0909373144	DOCENTES
+0909833238	DOCENTES
+0909935041	DOCENTES
+0908731953	DOCENTES
+0913782777	DOCENTES
+0901209304	DOCENTES
+0918741026	DOCENTES
+0901014928	DOCENTES
+0906831607	DOCENTES
+0900852146	DOCENTES
+0905197869	DOCENTES
+0905094157	DOCENTES
+0902212877	DOCENTES
+0907821698	DOCENTES
+0901239087	DOCENTES
+0915819585	DOCENTES
+0909797417	DOCENTES
+1701618132	DOCENTES
+0905021648	DOCENTES
+0903880102	DOCENTES
+0916567407	DOCENTES
+0906394713	DOCENTES
+1712263100	DOCENTES
+0905942579	DOCENTES
+0908675044	DOCENTES
+0904366713	DOCENTES
+0903954725	DOCENTES
+0905317251	DOCENTES
+0905811683	DOCENTES
+0907646210	DOCENTES
+1701161687	DOCENTES
+0900017427	DOCENTES
+0905846606	DOCENTES
+0908382542	DOCENTES
+0915200042	DOCENTES
+0905892253	DOCENTES
+0909502296	DOCENTES
+0910045970	DOCENTES
+0912819646	DOCENTES
+0910273663	DOCENTES
+0918119660	DOCENTES
+1303722365	DOCENTES
+0914840244	DOCENTES
+0904198546	DOCENTES
+0601112964	DOCENTES
+0903579415	DOCENTES
+0909452096	DOCENTES
+0903402303	DOCENTES
+0907511505	DOCENTES
+0920279833	DOCENTES
+0900723073	DOCENTES
+0912081478	DOCENTES
+0920335122	DOCENTES
+0909067977	DOCENTES
+0905612693	DOCENTES
+0919200766	DOCENTES
+0904164506	DOCENTES
+0200395838	DOCENTES
+0913791455	DOCENTES
+0914020235	DOCENTES
+0908515307	DOCENTES
+0910498229	DOCENTES
+0908903073	DOCENTES
+0910571983	DOCENTES
+0911566685	DOCENTES
+0201457199	DOCENTES
+0918185539	DOCENTES
+0910256379	DOCENTES
+0914800917	DOCENTES
+0912368412	DOCENTES
+0906653365	DOCENTES
+0906579842	DOCENTES
+0919694505	DOCENTES
+0914076450	DOCENTES
+0908625056	DOCENTES
+0913734836	DOCENTES
+0912498961	DOCENTES
+0912643533	DOCENTES
+0916201569	DOCENTES
+0903306835	DOCENTES
+0905309233	DOCENTES
+0900200718	DOCENTES
+0903454122	DOCENTES
+0916615487	DOCENTES
+0915999155	DOCENTES
+0913136883	DOCENTES
+0903513851	DOCENTES
+0902421775	DOCENTES
+0909046542	DOCENTES
+0912828795	DOCENTES
+0906253893	DOCENTES
+0600903389	DOCENTES
+0905892766	DOCENTES
+0600338297	DOCENTES
+0918878976	DOCENTES
+0917054330	DOCENTES
+0916100795	DOCENTES
+0924516578	DOCENTES
+0917747222	DOCENTES
+1202348882	DOCENTES
+0915819536	DOCENTES
+0903506590	DOCENTES
+0300803061	DOCENTES
+0916069818	DOCENTES
+0915330138	DOCENTES
+0913057881	DOCENTES
+0900561903	DOCENTES
+0910920685	DOCENTES
+0907096572	DOCENTES
+0901340562	DOCENTES
+0913235727	DOCENTES
+0912316338	DOCENTES
+0901901660	DOCENTES
+0909854143	DOCENTES
+0908504749	DOCENTES
+0903609840	DOCENTES
+0909319964	DOCENTES
+0904898087	DOCENTES
+0924370687	DOCENTES
+0916872963	DOCENTES
+0908616055	DOCENTES
+1302795016	DOCENTES
+0906175757	DOCENTES
+1200795902	DOCENTES
+1309585550	DOCENTES
+0902654631	DOCENTES
+0913452314	DOCENTES
+0908974371	DOCENTES
+0905703260	DOCENTES
+1200446571	DOCENTES
+0908946262	DOCENTES
+0900937921	DOCENTES
+0911780559	DOCENTES
+0702423930	DOCENTES
+0906519475	DOCENTES
+0918015397	DOCENTES
+0912907722	DOCENTES
+0913866190	DOCENTES
+0910751668	DOCENTES
+0910690361	DOCENTES
+0905442174	DOCENTES
+0903454957	DOCENTES
+0902255488	DOCENTES
+0916431281	DOCENTES
+0912946993	DOCENTES
+0911828150	DOCENTES
+0917278012	DOCENTES
+0911930857	DOCENTES
+0915428973	DOCENTES
+0905472684	DOCENTES
+0905059515	DOCENTES
+0906327465	DOCENTES
+0905888038	DOCENTES
+0908633308	DOCENTES
+0909116436	DOCENTES
+0900147521	DOCENTES
+0910756121	DOCENTES
+0920711918	DOCENTES
+0907951909	DOCENTES
+0909493835	DOCENTES
+0917494833	DOCENTES
+0911296382	DOCENTES
+0914782081	DOCENTES
+0906610910	DOCENTES
+0909182727	DOCENTES
+0908432792	DOCENTES
+0913774865	DOCENTES
+1801457522	DOCENTES
+0906049176	DOCENTES
+0908800535	DOCENTES
+0906915038	DOCENTES
+0916024433	DOCENTES
+1200775706	DOCENTES
+0910767516	DOCENTES
+0906521018	DOCENTES
+1801801869	DOCENTES
+1708029978	DOCENTES
+0918720798	DOCENTES
+0906783048	DOCENTES
+0905553491	DOCENTES
+0900162637	DOCENTES
+0914388665	DOCENTES
+0906786108	DOCENTES
+0910043173	DOCENTES
+0903486421	DOCENTES
+0907501050	DOCENTES
+0703440842	DOCENTES
+0907816706	DOCENTES
+1200449096	DOCENTES
+0912967288	DOCENTES
+0914363452	DOCENTES
+0911074573	DOCENTES
+0901599118	DOCENTES
+0912099355	DOCENTES
+0905533899	DOCENTES
+0905467098	DOCENTES
+1201075213	DOCENTES
+0904977063	DOCENTES
+0912147998	DOCENTES
+0909084337	DOCENTES
+0906340740	DOCENTES
+0918586306	DOCENTES
+0901988444	DOCENTES
+0908211444	DOCENTES
+0903958437	DOCENTES
+0904863370	DOCENTES
+0909147209	DOCENTES
+0907782155	DOCENTES
+0916123029	DOCENTES
+0907734719	DOCENTES
+0918581067	DOCENTES
+0911450914	DOCENTES
+0904527256	DOCENTES
+0908987522	DOCENTES
+0917298283	DOCENTES
+1201185244	DOCENTES
+1705917977	DOCENTES
+0906420559	DOCENTES
+0906081864	DOCENTES
+\.
+
+
+--
+-- Data for Name: observacion; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY observacion (cedula, id_departamento, fecha_pago, observacion_txt) FROM stdin;
+\.
+
+
+--
+-- Data for Name: quincena; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY quincena (cedula, id_departamento, estado, id_rubro, fecha_pago, valor_rubro, tipo_pago) FROM stdin;
+\.
+
+
+--
+-- Data for Name: rubro; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY rubro (id_rubro, nombre, tipo) FROM stdin;
+1	CARGAS FAMILIARES	INGRESO
+2	RESPONSABILIDAD DIRECTRIZ	INGRESO
+3	OTROS INGRESOS NO APORTABLES	INGRESO
+4	OTROS INGRESOS APORTABLES	INGRESO
+5	FONDO DE RESERVA	INGRESO
+6	REFRIGERIO	INGRESO
+7	APORTE IESS	EGRESO
+8	SINDICATO	EGRESO
+9	OTROS DESCUENTOS	EGRESO
+10	MULTAS FALTAS ATRASOS OTROS	EGRESO
+11	PRESTAMOS QUIROGRAFARIOS	EGRESO
+12	PRESTAMOS HIPOTECARIOS	EGRESO
+13	IMPUESTO A LA RTA	EGRESO
+14	SEGURO MEDICO	EGRESO
+15	SUELDO QUINCENAL	INGRESO
+16	GESTION ADMINISTRATIVA EXTRA/ OTROS INGRESOS	INGRESO
+17	ASOPUL	EGRESO
+18	TRIBUNAL	EGRESO
+19	PRESTAMOS IESS	EGRESO
+20	DESCUENTO POR  FALTAS	EGRESO
+21	ANTICIPO QUINCENAL	INGRESO
+22	EGRESO ANTICIPO QUINCENAL	EGRESO
+23	SEGURO MEDICO	EGRESO
+24	EXTENSION SALUD	EGRESO
+25	RECARGO 25%	INGRESO
+26	HORAS ORDINARIAS 50%	INGRESO
+27	OTROS DESCUENTOS ASOPUL	EGRESO
+28	HORAS EXTRAORDINARIAS	INGRESO
+29	CARGA DE RESPONSABILIDAD Y EFICIENCIA	INGRESO
+30	BENEFICIO POR CARGA DE RESPONSABILIDAD Y EFICIENCIA.	EGRESO
+31	FALTAS	EGRESO
+32	ATRASOS	EGRESO
+33	HORAS SUPLEMENTARIAS 50%	INGRESO
+34	HORAS SUPLEMENTARIAS	INGRESO
+35	PAGO ANTICIPADO POR CARGA DE RESPONSABILIDAD Y EFICIENCIA	EGRESO
+36	RECARGO NOCTURNO 25%	INGRESO
+37	ANTICIPO QUINCENAL APORTABLE	INGRESO
+38	0.1%	EGRESO
+\.
+
+
+--
+-- Name: rubro_id_rubro_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('rubro_id_rubro_seq', 39, true);
+
+
+--
+-- Data for Name: xlsresultado; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY xlsresultado (cedula, fechapago, id_departamento, valor_total, concepto) FROM stdin;
+0910272129	2014-02-28	2	328.00	Pago Decimo
+0915740138	2014-02-28	8	328.00	Pago Decimo
+0915808588	2014-03-07	41	298.44	Pago decimo Docentes
+1202086664	2014-03-07	41	340.00	Pago decimo Docentes
+0901904094	2014-03-07	42	340.00	Pago decimo Docentes
+0600056857	2014-03-07	43	340.00	Pago decimo Docentes
+0905567830	2014-03-07	42	340.00	Pago decimo Docentes
+1201287685	2014-03-07	44	340.00	Pago decimo Docentes
+0915093629	2014-03-07	45	298.44	Pago decimo Docentes
+0915309496	2014-03-07	42	340.00	Pago decimo Docentes
+0907281968	2014-03-07	46	298.44	Pago decimo Docentes
+0908226731	2014-03-07	47	298.44	Pago decimo Docentes
+0906654710	2014-03-07	48	340.00	Pago decimo Docentes
+0917583767	2014-03-07	49	255.00	Pago decimo Docentes
+0909548786	2014-03-07	42	298.44	Pago decimo Docentes
+0902371459	2014-03-07	47	340.00	Pago decimo Docentes
+0920869542	2014-03-07	41	298.44	Pago decimo Docentes
+0917360455	2014-03-07	47	340.00	Pago decimo Docentes
+0912171014	2014-03-07	43	340.00	Pago decimo Docentes
+1302534605	2014-03-07	40	340.00	Pago decimo Docentes
+1704188000	2014-03-07	40	340.00	Pago decimo Docentes
+0904217056	2014-03-07	44	340.00	Pago decimo Docentes
+0907587778	2014-03-07	46	340.00	Pago decimo Docentes
+0904684453	2014-03-07	44	340.00	Pago decimo Docentes
+0909591208	2014-03-07	47	298.44	Pago decimo Docentes
+0922268438	2014-03-07	50	340.00	Pago decimo Docentes
+0909373144	2014-03-07	51	340.00	Pago decimo Docentes
+0909935041	2014-03-07	44	298.44	Pago decimo Docentes
+0908731953	2014-03-07	47	340.00	Pago decimo Docentes
+0913782777	2014-03-07	52	340.00	Pago decimo Docentes
+0901209304	2014-03-07	43	340.00	Pago decimo Docentes
+0918741026	2014-03-07	53	340.00	Pago decimo Docentes
+0901014928	2014-03-07	53	340.00	Pago decimo Docentes
+0906831607	2014-03-07	48	340.00	Pago decimo Docentes
+0900852146	2014-03-07	47	340.00	Pago decimo Docentes
+0905197869	2014-03-07	49	340.00	Pago decimo Docentes
+0905094157	2014-03-07	48	340.00	Pago decimo Docentes
+0902212877	2014-03-07	47	340.00	Pago decimo Docentes
+0907821698	2014-03-07	40	340.00	Pago decimo Docentes
+0901239087	2014-03-07	44	340.00	Pago decimo Docentes
+0915819585	2014-03-07	44	298.44	Pago decimo Docentes
+0909797417	2014-03-07	42	340.00	Pago decimo Docentes
+1701618132	2014-03-07	47	340.00	Pago decimo Docentes
+0905021648	2014-03-07	49	340.00	Pago decimo Docentes
+0903880102	2014-03-07	44	340.00	Pago decimo Docentes
+0916567407	2014-03-07	40	340.00	Pago decimo Docentes
+0906394713	2014-03-07	41	340.00	Pago decimo Docentes
+1712263100	2014-03-07	44	298.44	Pago decimo Docentes
+0905942579	2014-03-07	40	340.00	Pago decimo Docentes
+0908675044	2014-03-07	51	283.33	Pago decimo Docentes
+0904366713	2014-03-07	47	340.00	Pago decimo Docentes
+0903954725	2014-03-07	52	340.00	Pago decimo Docentes
+0905317251	2014-03-07	44	255.00	Pago decimo Docentes
+0905811683	2014-03-07	46	340.00	Pago decimo Docentes
+0907646210	2014-03-07	42	340.00	Pago decimo Docentes
+1701161687	2014-03-07	53	340.00	Pago decimo Docentes
+0900017427	2014-03-07	46	340.00	Pago decimo Docentes
+0905846606	2014-03-07	47	340.00	Pago decimo Docentes
+0908382542	2014-03-07	42	340.00	Pago decimo Docentes
+0915200042	2014-03-07	41	340.00	Pago decimo Docentes
+0905892253	2014-03-07	50	340.00	Pago decimo Docentes
+0909502296	2014-03-07	42	340.00	Pago decimo Docentes
+0910045970	2014-03-07	52	340.00	Pago decimo Docentes
+0912819646	2014-03-07	47	298.44	Pago decimo Docentes
+0910273663	2014-03-07	48	298.44	Pago decimo Docentes
+0918119660	2014-03-07	51	340.00	Pago decimo Docentes
+1303722365	2014-03-07	50	340.00	Pago decimo Docentes
+0914840244	2014-03-07	40	298.44	Pago decimo Docentes
+0904198546	2014-03-07	54	340.00	Pago decimo Docentes
+0601112964	2014-03-07	54	340.00	Pago decimo Docentes
+0903579415	2014-03-07	47	340.00	Pago decimo Docentes
+0909452096	2014-03-07	52	298.44	Pago decimo Docentes
+0903402303	2014-03-07	47	298.44	Pago decimo Docentes
+0907511505	2014-03-07	48	340.00	Pago decimo Docentes
+0920279833	2014-03-07	46	298.44	Pago decimo Docentes
+0900723073	2014-03-07	47	340.00	Pago decimo Docentes
+0912081478	2014-03-07	51	298.44	Pago decimo Docentes
+0920335122	2014-03-07	42	340.00	Pago decimo Docentes
+0909067977	2014-03-07	44	340.00	Pago decimo Docentes
+0905612693	2014-03-07	40	340.00	Pago decimo Docentes
+0919200766	2014-03-07	48	340.00	Pago decimo Docentes
+0904164506	2014-03-07	52	340.00	Pago decimo Docentes
+0200395838	2014-03-07	45	283.33	Pago decimo Docentes
+0913791455	2014-03-07	52	340.00	Pago decimo Docentes
+0914020235	2014-03-07	41	298.44	Pago decimo Docentes
+0908515307	2014-03-07	42	340.00	Pago decimo Docentes
+0910498229	2014-03-07	49	255.00	Pago decimo Docentes
+0908903073	2014-03-07	43	340.00	Pago decimo Docentes
+0910571983	2014-03-07	47	340.00	Pago decimo Docentes
+0911566685	2014-03-07	43	298.44	Pago decimo Docentes
+0201457199	2014-03-07	46	298.44	Pago decimo Docentes
+0918185539	2014-03-07	47	298.44	Pago decimo Docentes
+0910256379	2014-03-07	43	340.00	Pago decimo Docentes
+0914800917	2014-03-07	48	298.44	Pago decimo Docentes
+0912368412	2014-03-07	47	340.00	Pago decimo Docentes
+0906653365	2014-03-07	43	283.33	Pago decimo Docentes
+0906579842	2014-03-07	40	340.00	Pago decimo Docentes
+0919694505	2014-03-07	51	340.00	Pago decimo Docentes
+0914076450	2014-03-07	40	340.00	Pago decimo Docentes
+0908625056	2014-03-07	40	340.00	Pago decimo Docentes
+0913734836	2014-03-07	51	283.33	Pago decimo Docentes
+0912498961	2014-03-07	52	298.44	Pago decimo Docentes
+0912643533	2014-03-07	44	283.33	Pago decimo Docentes
+0916201569	2014-03-07	53	340.00	Pago decimo Docentes
+0903306835	2014-03-07	49	340.00	Pago decimo Docentes
+0905309233	2014-03-07	47	340.00	Pago decimo Docentes
+0903454122	2014-03-07	41	340.00	Pago decimo Docentes
+0916615487	2014-03-07	40	340.00	Pago decimo Docentes
+0915999155	2014-03-07	40	340.00	Pago decimo Docentes
+0913136883	2014-03-07	44	340.00	Pago decimo Docentes
+0903513851	2014-03-07	52	340.00	Pago decimo Docentes
+0902421775	2014-03-07	47	340.00	Pago decimo Docentes
+0909046542	2014-03-07	40	298.44	Pago decimo Docentes
+0912828795	2014-03-07	47	298.44	Pago decimo Docentes
+0906253893	2014-03-07	53	340.00	Pago decimo Docentes
+0600903389	2014-03-07	43	340.00	Pago decimo Docentes
+0905892766	2014-03-07	52	340.00	Pago decimo Docentes
+0600338297	2014-03-07	42	340.00	Pago decimo Docentes
+0918878976	2014-03-07	45	340.00	Pago decimo Docentes
+0917054330	2014-03-07	43	340.00	Pago decimo Docentes
+0916100795	2014-03-07	51	298.44	Pago decimo Docentes
+1202348882	2014-03-07	40	340.00	Pago decimo Docentes
+0915819536	2014-03-07	43	40.00	Pago decimo Docentes
+0903506590	2014-03-07	47	340.00	Pago decimo Docentes
+0300803061	2014-03-07	42	340.00	Pago decimo Docentes
+0916069818	2014-03-07	47	340.00	Pago decimo Docentes
+0915330138	2014-03-07	44	340.00	Pago decimo Docentes
+0913057881	2014-03-07	47	298.44	Pago decimo Docentes
+0900561903	2014-03-07	46	340.00	Pago decimo Docentes
+0910920685	2014-03-07	40	298.44	Pago decimo Docentes
+0907096572	2014-03-07	46	340.00	Pago decimo Docentes
+0913235727	2014-03-07	40	340.00	Pago decimo Docentes
+0912316338	2014-03-07	46	298.44	Pago decimo Docentes
+0901901660	2014-03-07	53	340.00	Pago decimo Docentes
+0909854143	2014-03-07	49	340.00	Pago decimo Docentes
+0908504749	2014-03-07	48	340.00	Pago decimo Docentes
+0903609840	2014-03-07	41	283.33	Pago decimo Docentes
+0909319964	2014-03-07	45	298.44	Pago decimo Docentes
+0904898087	2014-03-07	45	340.00	Pago decimo Docentes
+0916872963	2014-03-07	41	340.00	Pago decimo Docentes
+0908616055	2014-03-07	46	298.44	Pago decimo Docentes
+1302795016	2014-03-07	46	283.33	Pago decimo Docentes
+0906175757	2014-03-07	51	340.00	Pago decimo Docentes
+1200795902	2014-03-07	41	255.00	Pago decimo Docentes
+1309585550	2014-03-07	46	340.00	Pago decimo Docentes
+0902654631	2014-03-07	52	340.00	Pago decimo Docentes
+0913452314	2014-03-07	50	340.00	Pago decimo Docentes
+0908974371	2014-03-07	45	340.00	Pago decimo Docentes
+0905703260	2014-03-07	43	340.00	Pago decimo Docentes
+0908946262	2014-03-07	52	340.00	Pago decimo Docentes
+0900937921	2014-03-07	47	340.00	Pago decimo Docentes
+0911780559	2014-03-07	44	340.00	Pago decimo Docentes
+0702423930	2014-03-07	40	298.44	Pago decimo Docentes
+0918015397	2014-03-07	47	298.44	Pago decimo Docentes
+0912907722	2014-03-07	47	340.00	Pago decimo Docentes
+0913866190	2014-03-07	40	340.00	Pago decimo Docentes
+0910751668	2014-03-07	44	283.33	Pago decimo Docentes
+0910690361	2014-03-07	46	298.44	Pago decimo Docentes
+0905442174	2014-03-07	51	340.00	Pago decimo Docentes
+0903454957	2014-03-07	45	340.00	Pago decimo Docentes
+0916431281	2014-03-07	44	298.44	Pago decimo Docentes
+0912946993	2014-03-07	40	298.44	Pago decimo Docentes
+0911828150	2014-03-07	49	340.00	Pago decimo Docentes
+0917278012	2014-03-07	43	340.00	Pago decimo Docentes
+0911930857	2014-03-07	40	340.00	Pago decimo Docentes
+0915428973	2014-03-07	40	298.44	Pago decimo Docentes
+0905472684	2014-03-07	49	340.00	Pago decimo Docentes
+0905059515	2014-03-07	49	340.00	Pago decimo Docentes
+0906327465	2014-03-07	50	340.00	Pago decimo Docentes
+0905888038	2014-03-07	49	340.00	Pago decimo Docentes
+0908633308	2014-03-07	43	340.00	Pago decimo Docentes
+0909116436	2014-03-07	40	340.00	Pago decimo Docentes
+0900147521	2014-03-07	43	340.00	Pago decimo Docentes
+0910756121	2014-03-07	46	283.33	Pago decimo Docentes
+0920711918	2014-03-07	53	340.00	Pago decimo Docentes
+0907951909	2014-03-07	48	340.00	Pago decimo Docentes
+0909493835	2014-03-07	40	340.00	Pago decimo Docentes
+0917494833	2014-03-07	40	340.00	Pago decimo Docentes
+0911296382	2014-03-07	40	239.89	Pago decimo Docentes
+0914782081	2014-03-07	44	298.44	Pago decimo Docentes
+0906610910	2014-03-07	49	340.00	Pago decimo Docentes
+0909182727	2014-03-07	41	340.00	Pago decimo Docentes
+0908432792	2014-03-07	50	340.00	Pago decimo Docentes
+0913774865	2014-03-07	44	298.44	Pago decimo Docentes
+0906049176	2014-03-07	47	298.44	Pago decimo Docentes
+0908800535	2014-03-07	40	298.44	Pago decimo Docentes
+0906915038	2014-03-07	46	340.00	Pago decimo Docentes
+0916024433	2014-03-07	46	283.33	Pago decimo Docentes
+1200775706	2014-03-07	40	298.44	Pago decimo Docentes
+0910767516	2014-03-07	48	340.00	Pago decimo Docentes
+0906521018	2014-03-07	47	340.00	Pago decimo Docentes
+1801801869	2014-03-07	40	340.00	Pago decimo Docentes
+1708029978	2014-03-07	46	298.44	Pago decimo Docentes
+0918720798	2014-03-07	40	298.44	Pago decimo Docentes
+0906783048	2014-03-07	52	340.00	Pago decimo Docentes
+0905553491	2014-03-07	40	340.00	Pago decimo Docentes
+0900162637	2014-03-07	40	340.00	Pago decimo Docentes
+0914388665	2014-03-07	40	298.44	Pago decimo Docentes
+0906786108	2014-03-07	43	340.00	Pago decimo Docentes
+0910043173	2014-03-07	40	340.00	Pago decimo Docentes
+0903486421	2014-03-07	54	340.00	Pago decimo Docentes
+0907501050	2014-03-07	50	340.00	Pago decimo Docentes
+0703440842	2014-03-07	41	340.00	Pago decimo Docentes
+0907816706	2014-03-07	40	340.00	Pago decimo Docentes
+1200449096	2014-03-07	52	340.00	Pago decimo Docentes
+0912967288	2014-03-07	40	340.00	Pago decimo Docentes
+0914363452	2014-03-07	44	340.00	Pago decimo Docentes
+0911074573	2014-03-07	45	340.00	Pago decimo Docentes
+0901599118	2014-03-07	46	283.33	Pago decimo Docentes
+0912099355	2014-03-07	45	340.00	Pago decimo Docentes
+0905533899	2014-03-07	40	340.00	Pago decimo Docentes
+0905467098	2014-03-07	41	340.00	Pago decimo Docentes
+1201075213	2014-03-07	52	298.44	Pago decimo Docentes
+0904977063	2014-03-07	40	340.00	Pago decimo Docentes
+0912147998	2014-03-07	40	298.44	Pago decimo Docentes
+0909084337	2014-03-07	44	283.33	Pago decimo Docentes
+0906340740	2014-03-07	52	340.00	Pago decimo Docentes
+0918586306	2014-03-07	42	340.00	Pago decimo Docentes
+0901988444	2014-03-07	44	340.00	Pago decimo Docentes
+0908211444	2014-03-07	48	298.44	Pago decimo Docentes
+0903958437	2014-03-07	45	340.00	Pago decimo Docentes
+0904863370	2014-03-07	51	340.00	Pago decimo Docentes
+0909147209	2014-03-07	51	340.00	Pago decimo Docentes
+0907782155	2014-03-07	53	340.00	Pago decimo Docentes
+0916123029	2014-03-07	41	340.00	Pago decimo Docentes
+0907734719	2014-03-07	52	340.00	Pago decimo Docentes
+0918581067	2014-03-07	42	298.44	Pago decimo Docentes
+0911450914	2014-03-07	47	340.00	Pago decimo Docentes
+0904527256	2014-03-07	45	340.00	Pago decimo Docentes
+0908987522	2014-03-07	45	340.00	Pago decimo Docentes
+0917298283	2014-03-07	47	299.39	Pago decimo Docentes
+1705917977	2014-03-07	40	340.00	Pago decimo Docentes
+0906420559	2014-03-07	47	283.33	Pago decimo Docentes
+0906081864	2014-03-07	47	255.00	Pago decimo Docentes
+0925484925	2014-03-07	2	340.00	Pago decimo Administrativos
+0914633557	2014-03-07	3	340.00	Pago decimo Administrativos
+0918854639	2014-03-07	4	340.00	Pago decimo Administrativos
+0915586564	2014-03-07	5	340.00	Pago decimo Administrativos
+0907696728	2014-03-07	7	340.00	Pago decimo Administrativos
+0919757344	2014-03-07	25	272.00	Pago decimo Administrativos
+0922901319	2014-03-07	5	340.00	Pago decimo Administrativos
+1303803231	2014-03-07	1	340.00	Pago decimo Administrativos
+0909599474	2014-03-07	9	340.00	Pago decimo Administrativos
+0915560403	2014-03-07	10	340.00	Pago decimo Administrativos
+0922388061	2014-03-07	8	340.00	Pago decimo Administrativos
+0906648688	2014-03-07	11	340.00	Pago decimo Administrativos
+0917636862	2014-03-07	4	340.00	Pago decimo Administrativos
+1718284894	2014-03-07	12	340.00	Pago decimo Administrativos
+0912130317	2014-03-07	6	340.00	Pago decimo Administrativos
+0901583864	2014-03-07	9	340.00	Pago decimo Administrativos
+0915255277	2014-03-07	1	340.00	Pago decimo Administrativos
+0908681513	2014-03-07	19	213.44	Pago decimo Administrativos
+0917455115	2014-03-07	4	340.00	Pago decimo Administrativos
+0918433442	2014-03-07	4	340.00	Pago decimo Administrativos
+0919770651	2014-03-07	55	238.00	Pago decimo Administrativos
+1310410376	2014-03-07	13	340.00	Pago decimo Administrativos
+1202150833	2014-03-07	14	340.00	Pago decimo Administrativos
+0918133562	2014-03-07	4	340.00	Pago decimo Administrativos
+1706886387	2014-03-07	5	340.00	Pago decimo Administrativos
+0703617993	2014-03-07	22	255.00	Pago decimo Administrativos
+0916485444	2014-03-07	55	311.67	Pago decimo Administrativos
+0916243488	2014-03-07	5	340.00	Pago decimo Administrativos
+1202469621	2014-03-07	15	340.00	Pago decimo Administrativos
+0917456766	2014-03-07	11	340.00	Pago decimo Administrativos
+0921899381	2014-03-07	26	169.06	Pago decimo Administrativos
+0914361407	2014-03-07	1	340.00	Pago decimo Administrativos
+0915198790	2014-03-07	5	340.00	Pago decimo Administrativos
+0913778627	2014-03-07	6	340.00	Pago decimo Administrativos
+1308095221	2014-03-07	1	340.00	Pago decimo Administrativos
+0904738911	2014-03-07	5	340.00	Pago decimo Administrativos
+0915740138	2014-03-07	8	340.00	Pago decimo Administrativos
+0926425893	2014-03-07	17	323.94	Pago decimo Administrativos
+0912504826	2014-03-07	4	340.00	Pago decimo Administrativos
+0909256885	2014-03-07	57	113.33	Pago decimo Administrativos
+1205121195	2014-03-07	12	219.11	Pago decimo Administrativos
+0913936670	2014-03-07	18	340.00	Pago decimo Administrativos
+0916660921	2014-03-07	4	340.00	Pago decimo Administrativos
+0910564673	2014-03-07	6	340.00	Pago decimo Administrativos
+0917572695	2014-03-07	4	340.00	Pago decimo Administrativos
+0917570186	2014-03-07	11	340.00	Pago decimo Administrativos
+0602404527	2014-03-07	15	340.00	Pago decimo Administrativos
+0903932598	2014-03-07	19	340.00	Pago decimo Administrativos
+0905536140	2014-03-07	20	340.00	Pago decimo Administrativos
+0923550073	2014-03-07	4	340.00	Pago decimo Administrativos
+0926278235	2014-03-07	9	340.00	Pago decimo Administrativos
+0915397301	2014-03-07	8	340.00	Pago decimo Administrativos
+0701800302	2014-03-07	4	340.00	Pago decimo Administrativos
+0906151014	2014-03-07	13	340.00	Pago decimo Administrativos
+0914621099	2014-03-07	21	340.00	Pago decimo Administrativos
+0602046427	2014-03-07	19	340.00	Pago decimo Administrativos
+0915109490	2014-03-07	8	340.00	Pago decimo Administrativos
+0909515488	2014-03-07	12	340.00	Pago decimo Administrativos
+1307094613	2014-03-07	5	340.00	Pago decimo Administrativos
+0918280637	2014-03-07	8	336.22	Pago decimo Administrativos
+0909864902	2014-03-07	4	340.00	Pago decimo Administrativos
+0907240519	2014-03-07	4	340.00	Pago decimo Administrativos
+0918786153	2014-03-07	18	340.00	Pago decimo Administrativos
+0910220540	2014-03-07	21	340.00	Pago decimo Administrativos
+0923986079	2014-03-07	23	340.00	Pago decimo Administrativos
+0923359707	2014-03-07	2	340.00	Pago decimo Administrativos
+0916489552	2014-03-07	13	340.00	Pago decimo Administrativos
+0907350847	2014-03-07	7	340.00	Pago decimo Administrativos
+0902066851	2014-03-07	24	340.00	Pago decimo Administrativos
+0921974978	2014-03-07	8	340.00	Pago decimo Administrativos
+0905565917	2014-03-07	5	340.00	Pago decimo Administrativos
+1203767957	2014-03-07	15	340.00	Pago decimo Administrativos
+0913784690	2014-03-07	21	340.00	Pago decimo Administrativos
+0920414224	2014-03-07	17	206.83	Pago decimo Administrativos
+0911529295	2014-03-07	5	340.00	Pago decimo Administrativos
+0910272129	2014-03-07	2	340.00	décimo
+0915330179	2014-03-07	13	340.00	Pago decimo Administrativos
+0701519258	2014-03-07	15	340.00	Pago decimo Administrativos
+0909616708	2014-03-07	4	340.00	Pago decimo Administrativos
+0911175677	2014-03-07	25	311.67	Pago decimo Administrativos
+0906601307	2014-03-07	18	340.00	Pago decimo Administrativos
+0924038243	2014-03-07	3	340.00	Pago decimo Administrativos
+0912896685	2014-03-07	4	340.00	Pago decimo Administrativos
+0901859629	2014-03-07	5	340.00	Pago decimo Administrativos
+0921338646	2014-03-07	4	340.00	Pago decimo Administrativos
+0916212715	2014-03-07	13	340.00	Pago decimo Administrativos
+0910920925	2014-03-07	17	340.00	Pago decimo Administrativos
+0910711829	2014-03-07	15	340.00	Pago decimo Administrativos
+0911225381	2014-03-07	1	340.00	Pago decimo Administrativos
+0917242471	2014-03-07	25	122.78	Pago decimo Administrativos
+0914761366	2014-03-07	12	340.00	Pago decimo Administrativos
+0915261127	2014-03-07	18	340.00	Pago decimo Administrativos
+1203802226	2014-03-07	1	252.17	Pago decimo Administrativos
+0908650138	2014-03-07	17	340.00	Pago decimo Administrativos
+0906825393	2014-03-07	13	340.00	Pago decimo Administrativos
+0950071613	2014-03-07	2	340.00	Pago decimo Administrativos
+0912268109	2014-03-07	18	340.00	Pago decimo Administrativos
+0917230955	2014-03-07	11	340.00	Pago decimo Administrativos
+0908959638	2014-03-07	27	340.00	Pago decimo Administrativos
+0918213067	2014-03-07	5	168.11	Pago decimo Administrativos
+0909799793	2014-03-07	4	340.00	Pago decimo Administrativos
+0926587353	2014-03-07	18	340.00	Pago decimo Administrativos
+0910322221	2014-03-07	6	340.00	Pago decimo Administrativos
+0909720856	2014-03-07	1	255.00	Pago decimo Administrativos
+0909182180	2014-03-07	1	340.00	Pago decimo Administrativos
+0912906070	2014-03-07	8	340.00	Pago decimo Administrativos
+0919558452	2014-03-07	26	340.00	Pago decimo Administrativos
+0905583142	2014-03-07	7	340.00	Pago decimo Administrativos
+0917490450	2014-03-07	16	340.00	Pago decimo Administrativos
+0919761478	2014-03-07	26	340.00	Pago decimo Administrativos
+0917759110	2014-03-07	4	340.00	Pago decimo Administrativos
+0918757576	2014-03-07	17	340.00	Pago decimo Administrativos
+0913316642	2014-03-07	1	340.00	Pago decimo Administrativos
+0918587148	2014-03-07	4	340.00	Pago decimo Administrativos
+0929689693	2014-03-07	4	340.00	Pago decimo Administrativos
+1308628740	2014-03-07	12	340.00	Pago decimo Administrativos
+0920602356	2014-03-07	1	340.00	Pago decimo Administrativos
+0911318798	2014-03-07	5	340.00	Pago decimo Administrativos
+0912090792	2014-03-07	19	340.00	Pago decimo Administrativos
+0910389170	2014-03-07	13	340.00	Pago decimo Administrativos
+0918834045	2014-03-07	4	340.00	Pago decimo Administrativos
+0918576281	2014-03-07	4	340.00	Pago decimo Administrativos
+0911037950	2014-03-07	6	340.00	Pago decimo Administrativos
+0913568952	2014-03-07	8	340.00	Pago decimo Administrativos
+0919754267	2014-03-07	11	340.00	Pago decimo Administrativos
+0914634670	2014-03-07	4	340.00	Pago decimo Administrativos
+0907679906	2014-03-07	13	340.00	Pago decimo Administrativos
+0913045993	2014-03-07	19	282.39	Pago decimo Administrativos
+0921273058	2014-03-07	3	340.00	Pago decimo Administrativos
+0926447855	2014-03-07	4	340.00	Pago decimo Administrativos
+0918798448	2014-03-07	1	340.00	Pago decimo Administrativos
+0917139958	2014-03-07	11	340.00	Pago decimo Administrativos
+0914430095	2014-03-07	28	340.00	Pago decimo Administrativos
+0913169132	2014-03-07	19	340.00	Pago decimo Administrativos
+0916402803	2014-03-07	5	340.00	Pago decimo Administrativos
+0918731407	2014-03-07	23	340.00	Pago decimo Administrativos
+0917433120	2014-03-07	4	340.00	Pago decimo Administrativos
+0905197521	2014-03-07	7	253.11	Pago decimo Administrativos
+0926570284	2014-03-07	17	340.00	Pago decimo Administrativos
+0908993918	2014-03-07	20	340.00	Pago decimo Administrativos
+0912148376	2014-03-07	1	340.00	Pago decimo Administrativos
+0911291094	2014-03-07	23	340.00	Pago decimo Administrativos
+0907887269	2014-03-07	1	340.00	Pago decimo Administrativos
+0100416791	2014-03-07	5	340.00	Pago decimo Administrativos
+0923002133	2014-03-07	12	340.00	Pago decimo Administrativos
+0919717108	2014-03-07	4	340.00	Pago decimo Administrativos
+0918072042	2014-03-07	16	340.00	Pago decimo Administrativos
+0916388010	2014-03-07	4	340.00	Pago decimo Administrativos
+0922711692	2014-03-07	19	169.06	Pago decimo Administrativos
+0915574768	2014-03-07	29	340.00	Pago decimo Administrativos
+0919688960	2014-03-07	8	340.00	Pago decimo Administrativos
+0907163760	2014-03-07	5	340.00	Pago decimo Administrativos
+1308282647	2014-03-07	4	340.00	Pago decimo Administrativos
+0921626875	2014-03-07	4	340.00	Pago decimo Administrativos
+0926966128	2014-03-07	4	340.00	Pago decimo Administrativos
+0920854080	2014-03-07	11	340.00	Pago decimo Administrativos
+0919705228	2014-03-07	4	340.00	Pago decimo Administrativos
+0914798889	2014-03-07	16	340.00	Pago decimo Administrativos
+0908498181	2014-03-07	8	340.00	Pago decimo Administrativos
+0925650665	2014-03-07	20	340.00	Pago decimo Administrativos
+0912555653	2014-03-07	30	340.00	Pago decimo Servicios
+0904988854	2014-03-07	31	340.00	Pago decimo Servicios
+0906642947	2014-03-07	30	340.00	Pago decimo Servicios
+0906632658	2014-03-07	30	340.00	Pago decimo Servicios
+0914554373	2014-03-07	32	340.00	Pago decimo Servicios
+0914114236	2014-03-07	30	340.00	Pago decimo Servicios
+0919586032	2014-03-07	32	340.00	Pago decimo Servicios
+0920525839	2014-03-07	32	340.00	Pago decimo Servicios
+0909141160	2014-03-07	31	340.00	Pago decimo Servicios
+0905468997	2014-03-07	33	340.00	Pago decimo Servicios
+0914661996	2014-03-07	21	340.00	Pago decimo Servicios
+0912600236	2014-03-07	31	340.00	Pago decimo Servicios
+0950855064	2014-03-07	21	282.39	Pago decimo Servicios
+1306081397	2014-03-07	30	340.00	Pago decimo Servicios
+0926655432	2014-03-07	32	340.00	Pago decimo Servicios
+1305446195	2014-03-07	34	340.00	Pago decimo Servicios
+0920985322	2014-03-07	32	340.00	Pago decimo Servicios
+0911742336	2014-03-07	32	340.00	Pago decimo Servicios
+0916518780	2014-03-07	32	340.00	Pago decimo Servicios
+1308605979	2014-03-07	35	340.00	Pago decimo Servicios
+0924740319	2014-03-07	32	340.00	Pago decimo Servicios
+0915934343	2014-03-07	32	340.00	Pago decimo Servicios
+1306411925	2014-03-07	21	340.00	Pago decimo Servicios
+0918760919	2014-03-07	32	340.00	Pago decimo Servicios
+0904715661	2014-03-07	31	340.00	Pago decimo Servicios
+0920164878	2014-03-07	32	340.00	Pago decimo Servicios
+0922688429	2014-03-07	32	340.00	Pago decimo Servicios
+1311024002	2014-03-07	32	340.00	Pago decimo Servicios
+0920603198	2014-03-07	30	340.00	Pago decimo Servicios
+0920379237	2014-03-07	35	340.00	Pago decimo Servicios
+0905722971	2014-03-07	21	340.00	Pago decimo Servicios
+0922571773	2014-03-07	32	340.00	Pago decimo Servicios
+0914074505	2014-03-07	32	340.00	Pago decimo Servicios
+0909283772	2014-03-07	21	340.00	Pago decimo Servicios
+1200875894	2014-03-07	21	340.00	Pago decimo Servicios
+0909762783	2014-03-07	35	340.00	Pago decimo Servicios
+0906077144	2014-03-07	30	340.00	Pago decimo Servicios
+0905715900	2014-03-07	30	340.00	Pago decimo Servicios
+0919171819	2014-03-07	30	340.00	Pago decimo Servicios
+1303465270	2014-03-07	36	340.00	Pago decimo Servicios
+0910089515	2014-03-07	31	340.00	Pago decimo Servicios
+0917607434	2014-03-07	32	340.00	Pago decimo Servicios
+0925513384	2014-03-07	32	340.00	Pago decimo Servicios
+0914910369	2014-03-07	30	340.00	Pago decimo Servicios
+0905863205	2014-03-07	21	340.00	Pago decimo Servicios
+0909181711	2014-03-07	32	340.00	Pago decimo Servicios
+0909561680	2014-03-07	32	340.00	Pago decimo Servicios
+0913930327	2014-03-07	33	340.00	Pago decimo Servicios
+0916323835	2014-03-07	30	340.00	Pago decimo Servicios
+0921314936	2014-03-07	32	340.00	Pago decimo Servicios
+0915801955	2014-03-07	32	340.00	Pago decimo Servicios
+0905938908	2014-03-07	21	340.00	Pago decimo Servicios
+0905799094	2014-03-07	35	340.00	Pago decimo Servicios
+0903247534	2014-03-07	31	340.00	Pago decimo Servicios
+0917241887	2014-03-07	35	340.00	Pago decimo Servicios
+0906167176	2014-03-07	34	340.00	Pago decimo Servicios
+0910947886	2014-03-07	32	340.00	Pago decimo Servicios
+0908634728	2014-03-07	37	340.00	Pago decimo Servicios
+0926869801	2014-03-07	30	340.00	Pago decimo Servicios
+0909508558	2014-03-07	31	340.00	Pago decimo Servicios
+0901887547	2014-03-07	30	340.00	Pago decimo Servicios
+0910738897	2014-03-07	32	340.00	Pago decimo Servicios
+0801716101	2014-03-07	30	340.00	Pago decimo Servicios
+1311982860	2014-03-07	30	340.00	Pago decimo Servicios
+0912987955	2014-03-07	30	340.00	Pago decimo Servicios
+0906211073	2014-03-07	30	340.00	Pago decimo Servicios
+0912212263	2014-03-07	32	340.00	Pago decimo Servicios
+0909067852	2014-03-07	30	340.00	Pago decimo Servicios
+0916384571	2014-03-07	34	340.00	Pago decimo Servicios
+1301316806	2014-03-07	30	340.00	Pago decimo Servicios
+0914793732	2014-03-07	35	340.00	Pago decimo Servicios
+0916682669	2014-03-07	32	340.00	Pago decimo Servicios
+1303192627	2014-03-07	38	340.00	Pago decimo Servicios
+0920101193	2014-03-07	32	340.00	Pago decimo Servicios
+0917266488	2014-03-07	30	340.00	Pago decimo Servicios
+1304409541	2014-03-07	32	340.00	Pago decimo Servicios
+0909877987	2014-03-07	31	340.00	Pago decimo Servicios
+0917700049	2014-03-07	30	340.00	Pago decimo Servicios
+0905919890	2014-03-07	30	340.00	Pago decimo Servicios
+0917569832	2014-03-07	35	340.00	Pago decimo Servicios
+1303569576	2014-03-07	35	340.00	Pago decimo Servicios
+1303174336	2014-03-07	30	340.00	Pago decimo Servicios
+1203166028	2014-03-07	32	340.00	Pago decimo Servicios
+0920317781	2014-03-07	30	340.00	Pago decimo Servicios
+0915852800	2014-03-07	35	340.00	Pago decimo Servicios
+1301790075	2014-03-07	35	340.00	Pago decimo Servicios
+0916018732	2014-03-07	34	340.00	Pago decimo Servicios
+0908036726	2014-03-07	36	340.00	Pago decimo Servicios
+0911488930	2014-03-07	30	340.00	Pago decimo Servicios
+0907754113	2014-03-07	35	340.00	Pago decimo Servicios
+0915264980	2014-03-07	30	340.00	Pago decimo Servicios
+0913904009	2014-03-07	35	340.00	Pago decimo Servicios
+0905232914	2014-03-07	35	340.00	Pago decimo Servicios
+0914633946	2014-03-07	30	340.00	Pago decimo Servicios
+0915315923	2014-03-07	32	340.00	Pago decimo Servicios
+0802143636	2014-03-07	32	340.00	Pago decimo Servicios
+0914148028	2014-03-07	30	340.00	Pago decimo Servicios
+1204311490	2014-03-07	30	340.00	Pago decimo Servicios
+0911998961	2014-03-07	32	340.00	Pago decimo Servicios
+0914470794	2014-03-07	32	340.00	Pago decimo Servicios
+0905573226	2014-03-07	32	340.00	Pago decimo Servicios
+0700894876	2014-03-07	21	340.00	Pago decimo Servicios
+0901918623	2014-03-07	30	340.00	Pago decimo Servicios
+0908698905	2014-03-07	39	340.00	Pago decimo Servicios
+0914200431	2014-03-07	32	340.00	Pago decimo Servicios
+0912937398	2014-03-07	32	340.00	Pago decimo Servicios
+0917466815	2014-03-07	30	340.00	Pago decimo Servicios
+0921457594	2014-03-07	30	340.00	Pago decimo Servicios
+0911966414	2014-03-07	32	340.00	Pago decimo Servicios
+1200623252	2014-03-07	38	340.00	Pago decimo Servicios
+0921491155	2014-03-07	30	340.00	Pago decimo Servicios
+0906452537	2014-03-07	34	340.00	Pago decimo Servicios
+0910858554	2014-03-07	32	340.00	Pago decimo Servicios
+0906372065	2014-03-07	30	340.00	Pago decimo Servicios
+0914078654	2014-03-07	21	340.00	Pago decimo Servicios
+0910947282	2014-03-07	35	340.00	Pago decimo Servicios
+1302173453	2014-03-07	30	340.00	Pago decimo Servicios
+0911192110	2014-03-07	35	340.00	Pago decimo Servicios
+1307427698	2014-03-07	30	340.00	Pago decimo Servicios
+0909066441	2014-03-07	35	340.00	Pago decimo Servicios
+0903830057	2014-03-07	38	340.00	Pago decimo Servicios
+0930968698	2014-03-07	32	340.00	Pago decimo Servicios
+0914868476	2014-03-07	30	340.00	Pago decimo Servicios
+1307322089	2014-03-07	32	340.00	Pago decimo Servicios
+0921917860	2014-03-07	8	340.00	Pago Decimo
+\.
+
+
+--
+-- Name: departamento_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY departamento
+    ADD CONSTRAINT departamento_pkey PRIMARY KEY (id_departamento);
+
+
+--
+-- Name: docente_detalles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY docente_detalles
+    ADD CONSTRAINT docente_detalles_pkey PRIMARY KEY (cedula, fecha_pago);
+
+
+--
+-- Name: docentes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY docentes
+    ADD CONSTRAINT docentes_pkey PRIMARY KEY (cedula);
+
+
+--
+-- Name: empleado_departamento_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY empleado_departamento
+    ADD CONSTRAINT empleado_departamento_pkey PRIMARY KEY (cedula, id_departamento, estado);
+
+
+--
+-- Name: empleado_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY empleado
+    ADD CONSTRAINT empleado_pkey PRIMARY KEY (cedula);
+
+
+--
+-- Name: funcion_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY funcion
+    ADD CONSTRAINT funcion_pkey PRIMARY KEY (cedula);
+
+
+--
+-- Name: observacion_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY observacion
+    ADD CONSTRAINT observacion_pkey PRIMARY KEY (cedula, fecha_pago);
+
+
+--
+-- Name: quincena_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY quincena
+    ADD CONSTRAINT quincena_pkey PRIMARY KEY (cedula, id_departamento, id_rubro, fecha_pago);
+
+
+--
+-- Name: rubro_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY rubro
+    ADD CONSTRAINT rubro_pkey PRIMARY KEY (id_rubro);
+
+
+--
+-- Name: xlsresultado_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+--
+
+ALTER TABLE ONLY xlsresultado
+    ADD CONSTRAINT xlsresultado_pkey PRIMARY KEY (cedula, fechapago);
+
+
+--
+-- Name: fkdocente_de934792; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY docente_detalles
+    ADD CONSTRAINT fkdocente_de934792 FOREIGN KEY (cedula) REFERENCES docentes(cedula);
+
+
+--
+-- Name: fkdocentes485108; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY docentes
+    ADD CONSTRAINT fkdocentes485108 FOREIGN KEY (cedula) REFERENCES empleado(cedula);
+
+
+--
+-- Name: fkempleado_d481481; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY empleado_departamento
+    ADD CONSTRAINT fkempleado_d481481 FOREIGN KEY (id_departamento) REFERENCES departamento(id_departamento);
+
+
+--
+-- Name: fkempleado_d993841; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY empleado_departamento
+    ADD CONSTRAINT fkempleado_d993841 FOREIGN KEY (cedula) REFERENCES empleado(cedula);
+
+
+--
+-- Name: fkfuncion128222; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY funcion
+    ADD CONSTRAINT fkfuncion128222 FOREIGN KEY (cedula) REFERENCES empleado(cedula);
+
+
+--
+-- Name: fkobservacio635213; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY observacion
+    ADD CONSTRAINT fkobservacio635213 FOREIGN KEY (cedula) REFERENCES empleado(cedula);
+
+
+--
+-- Name: fkquincena257353; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY quincena
+    ADD CONSTRAINT fkquincena257353 FOREIGN KEY (id_rubro) REFERENCES rubro(id_rubro);
+
+
+--
+-- Name: fkquincena266909; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY quincena
+    ADD CONSTRAINT fkquincena266909 FOREIGN KEY (cedula, id_departamento, estado) REFERENCES empleado_departamento(cedula, id_departamento, estado);
+
+
+--
+-- Name: fkxlsresulta535554; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY xlsresultado
+    ADD CONSTRAINT fkxlsresulta535554 FOREIGN KEY (cedula) REFERENCES empleado(cedula);
+
+
+--
+-- Name: public; Type: ACL; Schema: -; Owner: postgres
+--
+
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+REVOKE ALL ON SCHEMA public FROM postgres;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO PUBLIC;
+
+
+--
+-- PostgreSQL database dump complete
+--
+

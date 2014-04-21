@@ -1,0 +1,4 @@
+delete from funcion where  cedula='1234567890';
+delete from empleado_departamento  where  cedula='1234567890';
+delete from xlsresultado where cedula='1234567890';
+delete FROM  public.empleado  where  cedula='1234567890';

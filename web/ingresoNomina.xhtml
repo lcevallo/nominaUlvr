@@ -1,0 +1,166 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:p="http://primefaces.org/ui"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:c="http://java.sun.com/jsp/jstl/core">
+    <h:head>
+        <title>Ingreso de Valores de Nomina</title>
+        
+       
+        <script type="text/javascript" >
+
+//<![CDATA[ 
+
+     function openWin(url,funcion)
+                    {
+                        //window.open(url,"selectWindow","status,width=600,height=650,top='"+top+"', left='"+left);
+                        
+                        var x = screen.width/2 - 700/2;
+                        var y = screen.height/2 - 450/2;
+                        //var n = url.indexOf("funcion");                       
+                       
+                       
+                        if(url.indexOf('funcion')<0)
+                        {
+                            url=url.concat('&funcion=',funcion);                            
+                        }
+                        
+                        window.open(url,"selectWindow","status,width=800,height=800");                        
+                    }
+    
+   //]]>
+   
+</script>        
+        
+        
+    </h:head>
+    
+    <h:body>
+        <h:form id="formXlsResultado">
+            <p:growl id="messages" showDetail="true"/>
+            
+            
+            <h:panelGrid columns="4" border="0">
+                <p:outputLabel value="Fecha de Rol" for="calendario" />
+                <h:outputText id="calendario"  /> 
+                <p:calendar id="fechanac" value="#{nominarRolBean.fechaPago}" style="font-weight: bold" effect="slide"  pattern="dd/MM/yyyy" required="true" requiredMessage="No es un dia valido" /> 
+                <p:message for="calendario" />
+             </h:panelGrid>
+                
+                <h:panelGrid columns="5" border="0">
+                <p:outputLabel value="Funcion" for="funcionescombo" />
+                <p:selectOneMenu value="#{nominarRolBean.funcion}" id="funcionescombo" style="font-weight: bold" required="true" label="funcionescombo" requiredMessage="Debe de elegir una funcion">
+                    <f:selectItem itemLabel="Seleccione..." itemValue="" />
+                    <f:selectItem itemLabel="ADMINISTRATIVO" itemValue="ADMINISTRATIVO" />
+                    <f:selectItem itemLabel="SERVICIOS" itemValue="SERVICIOS" />
+                    <f:selectItem itemLabel="DOCENTES" itemValue="DOCENTES" />                    
+                </p:selectOneMenu>                               
+                <p:message for="funcionescombo" />
+                     
+                 </h:panelGrid>
+            
+            <h:panelGrid columns="2" border="0">
+                
+                <p:outputLabel value="Cedula (Opcional)" for="cedulatxt" />
+                <p:inputText id="cedulatxt" value="#{nominarRolBean.cedulaBusqueda}" />
+                
+            </h:panelGrid>  
+            
+               <h:panelGrid columns="2" border="0">
+                
+               <p:commandButton value="Buscar Pagos" id="botonBuscar" actionListener="#{nominarRolBean.buscarPagosEmpleado}" update=":formXlsResultado:gridDetalleQuincena"/> 
+               <p:commandButton value="Impresion Global" id="btnImpresion" actionListener="#{nominarRolBean.ImpresionGlobal}" /> 
+                               
+               </h:panelGrid>
+        
+                <p:blockUI block="gridDetalleQuincena" trigger="botonBuscar">  
+                    <p>Cargando</p>
+                </p:blockUI>
+            
+                
+            <p:dataTable id="gridDetalleQuincena" paginator="true" rows="15" rowKey="#{item.empleado.cedula}"  value="#{nominarRolBean.grid}" var="item" editable="true" editMode="cell" >
+                <p:ajax event="filter" listener="#{nominarRolBean.filterListenerCedula}"/>
+                
+                <f:facet name="header">  
+                    <p:commandButton type="button" onclick="rubroDlg.show()"  value="Agregar Nuevo Rubro" />  
+                </f:facet> 
+                    <p:ajax event="cellEdit" listener="#{nominarRolBean.onCellEdit}" update=":formXlsResultado:gridDetalleQuincena :formXlsResultado:messages" /> 
+                    <p:column>
+                        <h:outputLink target="_blank"  onclick="openWin('/nominaUlvr/faces/ServletReportePersonalNomina?fechapago=#{nominarRolBean.fechaFormateada}&amp;cedula=#{item.cedula}','#{nominarRolBean.funcion}')"  >
+                                Generar Rol
+                       </h:outputLink>                        
+                    </p:column>
+                  
+                    <p:column >
+                        <f:facet name="header">
+                            Cedula
+                        </f:facet>
+                        <h:outputText value="#{item.cedula}" />
+                    </p:column>
+                    <p:column>
+                        <f:facet name="header">
+                            Apellidos
+                        </f:facet>
+                        <h:outputText value="#{item.apellidos}" />
+                    </p:column>
+                    <p:column>
+                        <f:facet name="header">
+                            Nombres
+                        </f:facet>
+                        <h:outputText value="#{item.nombres}" />
+                    </p:column>
+                    <p:column>
+                        <f:facet name="header">
+                            Departamento
+                        </f:facet>
+                        <h:outputText value="#{item.departamentoActual}" />
+                    </p:column>
+                    <c:forEach var="i" begin="0" end="#{nominarRolBean.columnas.size()-1}" step="1">
+                        <p:column headerText="#{nominarRolBean.columnas.get(i)}">
+                            <p:cellEditor>
+                                    <f:facet name="output">
+                                        <h:outputText value="#{item.getQuincena(nominarRolBean.columns.get(nominarRolBean.columnas.get(i))).valorRubro}"/>
+                                    </f:facet>
+                                    <f:facet name="input">
+                                        <h:inputText value="#{nominarRolBean.nuevoValorRubro}"/>
+                                    </f:facet>
+                            </p:cellEditor>
+                        </p:column>
+                    </c:forEach>
+                </p:dataTable> 
+        </h:form>
+        
+        <p:dialog id="RuubroDialog1" header="Ingreso de Nuevo Rubro" widgetVar="rubroDlg" width="600" resizable="true" height="300" showEffect="bounce" hideEffect="explode" closeOnEscape="true">
+            
+                  <h:form id="guardarRubroForm">
+                    <p:growl id="messages2" showDetail="true"/>
+                      <p:fieldset legend="Informacion del nuevo Rubro" >
+                    <h:panelGrid columns="3">
+                        
+                        
+                        <h:outputLabel for="nRubro" value="Nombre:" />
+                        <p:inputText id="nRubro" value="#{nominarRolBean.nuevoRubro.nombre}" required="true" label="nRubro" />
+                        <p:message for="nRubro" />
+                        
+                        <h:outputLabel for="tRubro" value="Tipo Rubro:" />
+                        <p:selectOneMenu id="tRubro" value="#{nominarRolBean.nuevoRubro.tipo}" required="true" label="tRubro" effect="fade" editable="false" >
+                            <f:selectItem itemLabel="Seleccione ..." itemValue="" />
+                            <f:selectItem itemLabel="EGRESO" itemValue="EGRESO" />
+                            <f:selectItem itemLabel="INGRESO" itemValue="INGRESO" />
+                        </p:selectOneMenu>
+                        <p:message for="tRubro" display="icon" />
+                        
+                        <p:commandButton value="Guardar Rubro" process="guardarRubroForm" 
+                                         update=":formXlsResultado:gridDetalleQuincena :guardarRubroForm"  
+                                         actionListener="#{nominarRolBean.guardarRubro()}" ajax="true"  
+                                         />
+                    </h:panelGrid>
+                     
+                </p:fieldset>
+       </h:form>
+            </p:dialog>
+    </h:body>
+</html>
+ 

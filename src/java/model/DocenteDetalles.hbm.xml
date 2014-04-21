@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 06/03/2014 04:49:03 PM by Hibernate Tools 3.6.0 -->
+<hibernate-mapping>
+    <class name="model.DocenteDetalles" table="docente_detalles" schema="public">
+        <composite-id name="id" class="model.DocenteDetallesId">
+            <key-property name="cedula" type="string">
+                <column name="cedula" length="15" />
+            </key-property>
+            <key-property name="fechaPago" type="date">
+                <column name="fecha_pago" length="13" />
+            </key-property>
+        </composite-id>
+        <many-to-one name="docentes" class="model.Docentes" update="false" insert="false" fetch="select">
+            <column name="cedula" length="15" not-null="true" />
+        </many-to-one>
+        <property name="detalle" type="string">
+            <column name="detalle" length="100" />
+        </property>
+        <property name="valorActualHoras" type="big_decimal">
+            <column name="valor_actual_horas" precision="8" not-null="true" />
+        </property>
+        <property name="totalHorasQuincenal" type="short">
+            <column name="total_horas_quincenal" not-null="true" />
+        </property>
+        <property name="totalHorasFaltas" type="short">
+            <column name="total_horas_faltas" not-null="true" />
+        </property>
+        <property name="descuentoXFaltas" type="big_decimal">
+            <column name="descuento_x_faltas" precision="8" not-null="true" />
+        </property>
+        <property name="anticipoQuincenal" type="big_decimal">
+            <column name="anticipo_quincenal" precision="8" not-null="true" />
+        </property>
+        <property name="egresoAnticipoQuincenal" type="big_decimal">
+            <column name="egreso_anticipo_quincenal" precision="8" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

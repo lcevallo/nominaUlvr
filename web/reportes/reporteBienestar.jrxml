@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="reporteBienestar" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="5b9a9f01-5f5d-4f40-bdee-3805ab3ce40b">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="aspirante" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[select a.aspCedula, a.aspApellidos, a.aspNombres, a.aspFechaNacimiento, o.ocupDescripcion, c.carrNombre, r.regFecha, a.aspID
+from
+Aspirante a, AspiranteIntereses ai, AspiranteOcupacion ao, Ocupacion o, Carreras c, Registro r
+where
+a.aspID=ai.aspID and ao.aspID=a.aspID and o.ocupID=ao.ocupID and c.carrID=ai.carrID and c.carrLaica=1 and r.aspID=a.aspID and a.aspID=$P{aspirante}]]>
+	</queryString>
+	<field name="aspCedula" class="java.lang.String"/>
+	<field name="aspApellidos" class="java.lang.String"/>
+	<field name="aspNombres" class="java.lang.String"/>
+	<field name="aspFechaNacimiento" class="java.sql.Date"/>
+	<field name="ocupDescripcion" class="java.lang.String"/>
+	<field name="carrNombre" class="java.lang.String"/>
+	<field name="regFecha" class="java.sql.Timestamp"/>
+	<field name="aspID" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="282" splitType="Stretch">
+			<staticText>
+				<reportElement x="64" y="27" width="489" height="24" uuid="889b3a34-2b60-494e-8a3b-65ca8dc62c16"/>
+				<textElement textAlignment="Center" verticalAlignment="Top">
+					<font size="16" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[INSCRIPCIÓN]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="64" y="1" width="489" height="33" uuid="0224645b-8f64-4117-9592-24fd195ad3fb"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Universidad Laica VICENTE ROCAFUERTE de Guayaquil]]></text>
+			</staticText>
+			<image>
+				<reportElement x="23" y="14" width="83" height="86" uuid="8d245418-6ee0-4f04-9832-dc98712b02a7"/>
+				<imageExpression><![CDATA["C:\\jasper\\logo.png"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="64" y="46" width="489" height="24" uuid="23a5ba16-b236-4079-84b3-2a58fd29a03a"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Segundo Semestre 2014]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="97" y="80" width="117" height="20" uuid="815e7915-59f6-44f4-a095-c0ed14761406"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nombres y Apellidos:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="97" y="100" width="117" height="20" uuid="43c4bf9e-2b40-47c6-b5f9-b61241f2a243"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Cédula:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="97" y="120" width="117" height="20" uuid="2ba06917-ea9e-4445-b32f-adf628a78667"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ocupación Actual:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="97" y="140" width="117" height="20" uuid="0215344a-ad1b-490a-b524-bfe6c05fcc86"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fecha de Nacimiento:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="97" y="160" width="117" height="20" uuid="43437a20-595a-47ab-819c-895dab143b41"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Carrera de Interés:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="218" y="100" width="100" height="20" uuid="5c5e0fdb-6c4f-4820-8190-35820596e97a"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspCedula}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="218" y="80" width="253" height="20" uuid="6d65fa7f-091a-4406-afc6-524ddb55df0d"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspNombres}+' '+$F{aspApellidos}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="218" y="120" width="100" height="20" uuid="dc4e54a6-fca0-4cdf-bc21-fed738d6b2b7"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{ocupDescripcion}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="218" y="140" width="152" height="20" uuid="a0166cf9-c270-4efc-8594-86f1d7dc21da"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspFechaNacimiento}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="218" y="160" width="199" height="20" uuid="6e9735d7-0ce0-4fbe-b94e-664806b8aedd"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{carrNombre}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="97" y="180" width="117" height="20" uuid="94aecb28-ada7-4cf1-97a2-6ecb4a503ad9"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fecha y Hora del Test:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="218" y="180" width="199" height="20" uuid="d122d9a0-b46c-461b-8477-2af1a5a048bb"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{regFecha}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="31" y="219" width="33" height="32" uuid="e2ab850a-2b92-419e-b933-622b8526f5db"/>
+				<textElement>
+					<font size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[No.]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="125" y="252" width="149" height="20" uuid="c114e297-a2de-473a-a0b5-b3c8e6be5dfa"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12"/>
+				</textElement>
+				<text><![CDATA[Firma del Aspirante]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="302" y="251" width="149" height="20" uuid="51fd0751-6106-4ecf-8d27-6ced66bd5397"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12"/>
+				</textElement>
+				<text><![CDATA[Firma del Responsable]]></text>
+			</staticText>
+			<line>
+				<reportElement x="125" y="251" width="149" height="1" uuid="fb1a38e9-73ee-40d2-88cc-1e2f3237d511"/>
+			</line>
+			<line>
+				<reportElement x="302" y="251" width="149" height="1" uuid="a7346ec3-2832-45b8-b653-edcb1fefb1a6"/>
+			</line>
+			<staticText>
+				<reportElement x="159" y="200" width="55" height="20" uuid="722ce368-fc15-468d-bcf4-01213095c42f"/>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[Guayaquil,]]></text>
+			</staticText>
+			<textField pattern="MMMMM dd, yyyy">
+				<reportElement x="218" y="200" width="100" height="20" uuid="967333d1-886d-4c02-b79a-77c67831eb22"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="0" y="281" width="555" height="1" uuid="45ed9d81-1994-4e98-93ff-bf023df53c3b"/>
+			</line>
+			<textField>
+				<reportElement x="64" y="219" width="100" height="32" uuid="2f9bc433-0854-47dd-a0f9-e087d21c5090"/>
+				<textElement verticalAlignment="Top">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{aspID}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="471" splitType="Stretch">
+			<staticText>
+				<reportElement x="64" y="304" width="489" height="24" uuid="4796ed54-1231-44a7-b0e1-b4762894289d"/>
+				<textElement textAlignment="Center" verticalAlignment="Top">
+					<font size="16" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[ORDEN DE PAGO]]></text>
+			</staticText>
+			<image>
+				<reportElement x="23" y="322" width="83" height="86" uuid="83bb8f12-4faf-4605-b0e4-1ddadb35f18c"/>
+				<imageExpression><![CDATA["C:\\jasper\\logo.png"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="93" y="348" width="117" height="20" uuid="6da1a147-c19a-4fd9-ba18-2b625d54a381"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Cédula:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="214" y="328" width="253" height="20" uuid="a7384b54-9e9e-496b-bc93-301984faaf85"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspNombres}+' '+$F{aspApellidos}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="93" y="328" width="117" height="20" uuid="d23f8e16-b8f6-4992-8c40-ff2af60766c4"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nombres y Apellidos:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="214" y="348" width="100" height="20" uuid="e45aec7e-b37e-43e3-a968-907e1f907fde"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspCedula}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="93" y="368" width="117" height="20" uuid="70f5f922-2430-48d3-9469-2f3a86b8f0de"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[La Suma de:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="93" y="388" width="117" height="20" uuid="009ef2b1-f6e6-4bd6-9c58-bd3326687980"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Por Concepto de:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="155" y="408" width="55" height="20" uuid="b3e166b2-407b-44c5-ac71-6cc1352c8b00"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle"/>
+				<text><![CDATA[Guayaquil,]]></text>
+			</staticText>
+			<textField pattern="MMMMM dd, yyyy">
+				<reportElement x="214" y="408" width="100" height="20" uuid="6c3fc097-a161-4421-850f-a46749cba5ce"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="302" y="450" width="149" height="20" uuid="d7e0f7e1-e678-4ca1-bb39-028bf84c8ef7"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12"/>
+				</textElement>
+				<text><![CDATA[Firma del Responsable]]></text>
+			</staticText>
+			<line>
+				<reportElement x="302" y="450" width="149" height="1" uuid="de6d7d56-7324-4c13-831e-42153072079e"/>
+			</line>
+			<line>
+				<reportElement x="0" y="294" width="555" height="1" uuid="9b1e27e6-2453-4b87-ad0c-c1e5039aefe1"/>
+			</line>
+			<staticText>
+				<reportElement x="31" y="428" width="33" height="32" uuid="487f4f34-d730-485e-8527-d09439fbf8c2"/>
+				<textElement>
+					<font size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[No.]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="214" y="368" width="156" height="20" uuid="bda28b9c-4d0e-4ef3-b5f2-6295b61e1645"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="false"/>
+				</textElement>
+				<text><![CDATA[$25 (Veinticinco dólares)]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="214" y="388" width="156" height="20" uuid="aaefc720-5871-44ec-85ce-ec6e4481a253"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="false"/>
+				</textElement>
+				<text><![CDATA[TEST VOCACIONAL]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="159" y="199" width="55" height="20" uuid="959bd9a6-be7c-41b2-b7d6-fa49abb0554f"/>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[Guayaquil,]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="64" y="45" width="489" height="24" uuid="46a5d2c0-e6d1-48f0-953a-4f25eacc39a5"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Segundo Semestre 2014]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="218" y="79" width="253" height="20" uuid="3c82a93a-2122-426b-9be5-0775af7b5287"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspNombres}+' '+$F{aspApellidos}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="125" y="251" width="149" height="20" uuid="c496daa2-206d-4818-94c5-3c399f4ed4e5"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12"/>
+				</textElement>
+				<text><![CDATA[Firma del Aspirante]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="218" y="159" width="199" height="20" uuid="59e5f3ff-43d5-40b3-b239-56af29ad963d"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{carrNombre}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="64" y="26" width="489" height="24" uuid="468491ef-e864-4a52-9a7e-8f54954c19ed"/>
+				<textElement textAlignment="Center" verticalAlignment="Top">
+					<font size="16" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[INSCRIPCIÓN]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="64" y="0" width="489" height="33" uuid="a402847d-ea34-4be2-a4e6-88bbd1c21278"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Universidad Laica VICENTE ROCAFUERTE de Guayaquil]]></text>
+			</staticText>
+			<image>
+				<reportElement x="23" y="13" width="83" height="86" uuid="1c317252-2159-42f9-89a0-8ce6148afb7b"/>
+				<imageExpression><![CDATA["C:\\jasper\\logo.png"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="97" y="179" width="117" height="20" uuid="534bad1e-851f-47a1-a939-210582a8cb2b"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fecha y Hora del Test:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="218" y="99" width="100" height="20" uuid="bce33fa2-7a00-4fdc-b9eb-c773e19c7584"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspCedula}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="218" y="119" width="100" height="20" uuid="3e8c02a0-2c63-436b-902c-cb2a54c09469"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{ocupDescripcion}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="97" y="139" width="117" height="20" uuid="d633c88d-6e0f-46b7-a6b0-b9525e435d8a"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Fecha de Nacimiento:]]></text>
+			</staticText>
+			<line>
+				<reportElement x="125" y="250" width="149" height="1" uuid="187185e5-589b-4cba-81cc-83bb98512a8b"/>
+			</line>
+			<staticText>
+				<reportElement x="31" y="218" width="33" height="32" uuid="3aa11366-23e4-45c3-ac64-1da1990c0ab4"/>
+				<textElement>
+					<font size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[No.]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="97" y="159" width="117" height="20" uuid="c213fcad-0ef7-4e7c-bcea-f00d8abcfef0"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Carrera de Interés:]]></text>
+			</staticText>
+			<line>
+				<reportElement x="302" y="250" width="149" height="1" uuid="420aecdc-e4df-4ec0-9156-55fe3e59cf1a"/>
+			</line>
+			<staticText>
+				<reportElement x="97" y="99" width="117" height="20" uuid="f9f1affa-364c-4475-99f8-18693eeedf88"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Cédula:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="218" y="179" width="199" height="20" uuid="e6dad6b8-c8ed-495a-9d82-fd09de25e9a8"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{regFecha}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="97" y="119" width="117" height="20" uuid="171f52f3-b4b8-4823-9ead-786089e792c8"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ocupación Actual:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="302" y="250" width="149" height="20" uuid="d9296c39-7749-4855-9d40-faada12b6c47"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12"/>
+				</textElement>
+				<text><![CDATA[Firma del Responsable]]></text>
+			</staticText>
+			<textField pattern="MMMMM dd, yyyy">
+				<reportElement x="218" y="199" width="100" height="20" uuid="6c8713b4-0f75-498a-87b7-665e190cf73c"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="97" y="79" width="117" height="20" uuid="81860279-fd14-4cd8-bc44-8ba36289ff6b"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nombres y Apellidos:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="218" y="139" width="152" height="20" uuid="1c04de6f-2c55-4075-9cc1-d2afa62ce462"/>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{aspFechaNacimiento}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="64" y="218" width="100" height="32" uuid="2a92e27a-790e-412e-b00b-af92fdceae1b"/>
+				<textElement verticalAlignment="Top">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{aspID}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="64" y="428" width="100" height="32" uuid="af989f4c-f7c2-474f-8cf8-dfa96c5c6b96"/>
+				<textElement verticalAlignment="Top">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{aspID}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="271" width="553" height="29" forecolor="#F20909" uuid="548afc66-08f7-40d7-8125-f1774c4c9e15"/>
+				<textElement textAlignment="Center" verticalAlignment="Bottom">
+					<font fontName="Serif" size="7"/>
+				</textElement>
+				<text><![CDATA[Le recordamos que en la inscripción del test aptitudinal NO REPRESENTA UNA RESERVA DE CUPO EN LA CARRERA DESEADA, para esto usted tiene que acudir a la Unidad de Nivelación y Admisión de la ULVR donde se revisara sus documentos ingresados al preregistro y se generara su inscripción y orden de pago correspondiente.]]></text>
+			</staticText>
+		</band>
+	</summary>
+</jasperReport>

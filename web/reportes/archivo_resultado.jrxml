@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="archivo_resultado" language="groovy" pageWidth="1207" pageHeight="595" orientation="Landscape" columnWidth="1167" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="b99684aa-ed50-4b0e-a45c-1a8ca8e497c0">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="fechapago" class="java.util.Date"/>
+	<parameter name="funcion" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[SELECT
+  'C' AS tipo1,
+  empleado.cedula,
+empleado.apellidos,
+empleado.nombres,
+  public.xlsresultado.concepto,
+  'CUE' AS formapago,
+  empleado.banco,
+  empleado.tipo_cuenta,
+  empleado.num_cuenta,
+  empleado.email,
+  'S' AS incluir,
+  public.xlsresultado.valor_total
+FROM
+  empleado
+  LEFT OUTER JOIN funcion ON (empleado.cedula = funcion.cedula)
+  LEFT OUTER JOIN public.xlsresultado ON (funcion.cedula = public.xlsresultado.cedula)
+WHERE
+  public.xlsresultado.valor_total>0
+  AND
+  funcion.tipo = $P{funcion}
+  AND
+   xlsresultado.fechapago=$P{fechapago}]]>
+	</queryString>
+	<field name="tipo1" class="java.lang.String"/>
+	<field name="cedula" class="java.lang.String"/>
+	<field name="apellidos" class="java.lang.String"/>
+	<field name="nombres" class="java.lang.String"/>
+	<field name="concepto" class="java.lang.String"/>
+	<field name="formapago" class="java.lang.String"/>
+	<field name="banco" class="java.lang.Integer"/>
+	<field name="tipo_cuenta" class="java.lang.String"/>
+	<field name="num_cuenta" class="java.lang.String"/>
+	<field name="email" class="java.lang.String"/>
+	<field name="incluir" class="java.lang.String"/>
+	<field name="valor_total" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="79" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="59" width="100" height="20" uuid="24062fa1-f8bb-4995-ac8c-1adb2586be8e"/>
+				<text><![CDATA[tipo1]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="100" y="59" width="100" height="20" uuid="90c3e16a-5cbc-4134-bf6c-616aaec354df"/>
+				<text><![CDATA[cedula]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="200" y="59" width="200" height="20" uuid="ccb5fbdc-c515-4280-bdea-bb14a5385b28"/>
+				<text><![CDATA[Nombres]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="400" y="59" width="100" height="20" uuid="3cca90a3-08fd-462b-ac5e-89324b91b9c6"/>
+				<text><![CDATA[concepto]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="500" y="59" width="100" height="20" uuid="9362ffdb-8804-4fe5-b30e-b26cc4c4543c"/>
+				<text><![CDATA[formapago]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="600" y="59" width="100" height="20" uuid="2e8849a6-cb53-44e0-917e-4872fa188c46"/>
+				<text><![CDATA[banco]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="700" y="59" width="100" height="20" uuid="a0e94a2a-73c3-419d-b48b-b8beb2f14816"/>
+				<text><![CDATA[tipo_cuenta]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="800" y="59" width="100" height="20" uuid="4a118f21-2267-4736-85ec-3e9425bc581a"/>
+				<text><![CDATA[num_cuenta]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="900" y="59" width="100" height="20" uuid="fcdb6cea-8af8-4a00-8702-1a07eb55319f"/>
+				<text><![CDATA[email]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="1000" y="59" width="64" height="20" uuid="e6db96d9-39a7-4a79-8809-95842d1b11ea"/>
+				<text><![CDATA[incluir]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="1064" y="59" width="103" height="20" uuid="d018ff7b-cfdf-4dec-a03e-e6fb24575698"/>
+				<text><![CDATA[valor_total]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="22" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="100" height="20" uuid="d87df585-a53f-4c54-9d38-af529eee712b"/>
+				<textFieldExpression><![CDATA[$F{tipo1}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="100" y="0" width="100" height="20" uuid="57d9f8bc-6056-4459-b7ef-1daf90e55428"/>
+				<textFieldExpression><![CDATA[$F{cedula}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="200" y="0" width="200" height="20" uuid="1b5629ac-3a86-4875-9c91-db0b74b20559"/>
+				<textFieldExpression><![CDATA[$F{apellidos}+" "+$F{nombres}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="400" y="0" width="100" height="20" uuid="c986cd11-8a59-438f-9106-8623a09bfbef"/>
+				<textFieldExpression><![CDATA[$F{concepto}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="500" y="0" width="100" height="20" uuid="dd3d2c14-829c-47cb-99d8-00843d901784"/>
+				<textFieldExpression><![CDATA[$F{formapago}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="600" y="0" width="100" height="20" uuid="6e3f084b-3ba8-49ac-b428-e1a2b2301b69"/>
+				<textFieldExpression><![CDATA[$F{banco}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="700" y="0" width="100" height="20" uuid="5c802991-2fae-4771-95a6-09902b894632"/>
+				<textFieldExpression><![CDATA[$F{tipo_cuenta}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="800" y="0" width="100" height="20" uuid="c01a9d0e-e7b5-4d1d-833b-d5b9bb90e087"/>
+				<textFieldExpression><![CDATA[$F{num_cuenta}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="900" y="0" width="100" height="20" uuid="59152d84-ebf8-48c6-91f3-861ef498b5e2"/>
+				<textFieldExpression><![CDATA[$F{email}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="1000" y="0" width="64" height="20" uuid="7087f852-6c1c-443e-a9d7-99f68a072099"/>
+				<textFieldExpression><![CDATA[$F{incluir}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="1064" y="0" width="103" height="20" uuid="7df29ed9-a50e-429d-a340-23260c3bda4c"/>
+				<textFieldExpression><![CDATA[$F{valor_total}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="54" splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="42" splitType="Stretch"/>
+	</summary>
+</jasperReport>

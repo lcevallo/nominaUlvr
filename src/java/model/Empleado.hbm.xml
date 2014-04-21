@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 06/03/2014 04:49:03 PM by Hibernate Tools 3.6.0 -->
+<hibernate-mapping>
+    <class name="model.Empleado" table="empleado" schema="public">
+        <id name="cedula" type="string">
+            <column name="cedula" length="15" />
+            <generator class="assigned" />
+        </id>
+        <property name="nombres" type="string">
+            <column name="nombres" length="150" not-null="true" />
+        </property>
+        <property name="apellidos" type="string">
+            <column name="apellidos" length="150" not-null="true" />
+        </property>
+        <property name="numCuenta" type="string">
+            <column name="num_cuenta" length="10" />
+        </property>
+        <property name="tipoCuenta" type="string">
+            <column name="tipo_cuenta" length="2" />
+        </property>
+        <property name="banco" type="java.lang.Integer">
+            <column name="banco" />
+        </property>
+        <property name="email" type="string">
+            <column name="email" length="100" />
+        </property>
+        <one-to-one name="docentes" class="model.Docentes"></one-to-one>
+        <set name="observacions" table="observacion" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="cedula" length="15" not-null="true" />
+            </key>
+            <one-to-many class="model.Observacion" />
+        </set>
+        <set name="xlsresultados" table="xlsresultado" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="cedula" length="15" not-null="true" />
+            </key>
+            <one-to-many class="model.Xlsresultado" />
+        </set>
+        <one-to-one name="funcion" class="model.Funcion"></one-to-one>
+        <set name="empleadoDepartamentos" table="empleado_departamento" inverse="true" lazy="true" fetch="select">
+            <key>
+                <column name="cedula" length="15" not-null="true" />
+            </key>
+            <one-to-many class="model.EmpleadoDepartamento" />
+        </set>
+    </class>
+</hibernate-mapping>

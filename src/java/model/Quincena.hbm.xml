@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<!-- Generated 06/03/2014 04:49:03 PM by Hibernate Tools 3.6.0 -->
+<hibernate-mapping>
+    <class name="model.Quincena" table="quincena" schema="public">
+        <composite-id name="id" class="model.QuincenaId">
+            <key-property name="cedula" type="string">
+                <column name="cedula" length="15" />
+            </key-property>
+            <key-property name="idDepartamento" type="short">
+                <column name="id_departamento" />
+            </key-property>
+            <key-property name="idRubro" type="int">
+                <column name="id_rubro" />
+            </key-property>
+            <key-property name="fechaPago" type="timestamp">
+                <column name="fecha_pago" length="29" />
+            </key-property>
+        </composite-id>
+        <many-to-one name="empleadoDepartamento" class="model.EmpleadoDepartamento" update="false" insert="false" fetch="select">
+            <column name="cedula" length="15" not-null="true" />
+            <column name="id_departamento" not-null="true" />
+            <column name="estado" not-null="true" />
+        </many-to-one>
+        <many-to-one name="rubro" class="model.Rubro" update="false" insert="false" fetch="select">
+            <column name="id_rubro" not-null="true" />
+        </many-to-one>
+        <property name="valorRubro" type="big_decimal">
+            <column name="valor_rubro" precision="8" not-null="true" />
+        </property>
+        <property name="tipoPago" type="char">
+            <column name="tipo_pago" length="1" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>
