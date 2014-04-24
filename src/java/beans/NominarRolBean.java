@@ -227,7 +227,7 @@ public class NominarRolBean implements Serializable{
                     Calendar cal = Calendar.getInstance();
                     cal.setTime(this.fechaPago);                    
                     
-                    String nombreMes= new SimpleDateFormat("MMMMMMM").format(cal.getTime()).toString();
+                    String nombreMes= new SimpleDateFormat("MMMMMMMMMMMMMM").format(cal.getTime()).toString();
                     
                     
                     String month = monthName[cal.get(Calendar.MONTH)];
