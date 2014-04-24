@@ -196,10 +196,10 @@ public class NominarRolBean implements Serializable{
             NominaRolDao nominaRolDao=new NominaRolDaoImpl();
             boolean guardar=true;
             
-            String[] monthName = {"January", "February",
-                                    "March", "April", "May", "June", "July",
-                                    "August", "September", "October", "November",
-                                    "December"
+            String[] monthName = {"Enero", "Febrero",
+                                    "Marzo", "Abril", "Mayo", "Junio", "Julio",
+                                    "Agosto", "Septiembre", "Octubre", "Noviembre",
+                                    "Diciembre"
                                             };
             
             
@@ -225,16 +225,15 @@ public class NominarRolBean implements Serializable{
                     q_id.setIdDepartamento(seleccionado.getEmpleado_departamento().getId().getIdDepartamento());
                     
                     Calendar cal = Calendar.getInstance();
-                    cal.setTime(this.fechaPago);
+                    cal.setTime(this.fechaPago);                    
                     
-                    
-                    String nombreMes= new SimpleDateFormat("MMM").format(cal.getTime()).toString();
+                    String nombreMes= new SimpleDateFormat("MMMMMMM").format(cal.getTime()).toString();
                     
                     
                     String month = monthName[cal.get(Calendar.MONTH)];
                     System.out.println("Month name: " + month);
                     
-                    
+                    /*
                     switch(Calendar.MONTH)
                     {
                         case 1:case 3:case 5:case 7:case 8:case 10:case 12: //Tienen 31 dias
@@ -278,7 +277,7 @@ public class NominarRolBean implements Serializable{
                        break;
                     
                     
-                    }
+                    }*/
                     
                     
                     /*** SECCION CUANDO EL PRIMER MES SEA 0 Y NO 1*/
