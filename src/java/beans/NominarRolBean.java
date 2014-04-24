@@ -196,6 +196,13 @@ public class NominarRolBean implements Serializable{
             NominaRolDao nominaRolDao=new NominaRolDaoImpl();
             boolean guardar=true;
             
+            String[] monthName = {"January", "February",
+                                    "March", "April", "May", "June", "July",
+                                    "August", "September", "October", "November",
+                                    "December"
+                                            };
+            
+            
             
             BigDecimal viejoValorRubro;
             
@@ -222,6 +229,10 @@ public class NominarRolBean implements Serializable{
                     
                     
                     String nombreMes= new SimpleDateFormat("MMM").format(cal.getTime()).toString();
+                    
+                    
+                    String month = monthName[cal.get(Calendar.MONTH)];
+                    System.out.println("Month name: " + month);
                     
                     
                     switch(Calendar.MONTH)
