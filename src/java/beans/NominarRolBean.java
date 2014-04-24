@@ -220,6 +220,10 @@ public class NominarRolBean implements Serializable{
                     Calendar cal = Calendar.getInstance();
                     cal.setTime(this.fechaPago);
                     
+                    
+                    String nombreMes= new SimpleDateFormat("MMM").format(cal.getTime()).toString();
+                    
+                    
                     switch(Calendar.MONTH)
                     {
                         case 1:case 3:case 5:case 7:case 8:case 10:case 12: //Tienen 31 dias
@@ -264,6 +268,61 @@ public class NominarRolBean implements Serializable{
                     
                     
                     }
+                    
+                    
+                    /*** SECCION CUANDO EL PRIMER MES SEA 0 Y NO 1*/
+                                        
+                     switch(Calendar.MONTH)
+                    {
+                        case 0:case 2:case 4:case 6:case 7:case 9:case 11: //Tienen 31 dias
+                            if(cal.get(Calendar.DAY_OF_MONTH) == 15){
+                                                                                quincena_modificada.setTipoPago('q');
+                                                                          }
+                                 else if(cal.get(Calendar.DAY_OF_MONTH) == 31){
+                                                            quincena_modificada.setTipoPago('f');
+                                                        }
+                                 else
+                                 {
+                                     guardar=false;
+                                 }
+                            
+                        break;
+                        case 3:case 5:case 8:case 10: //Tienen 30 dias
+                                 if(cal.get(Calendar.DAY_OF_MONTH) == 15){
+                                                                                quincena_modificada.setTipoPago('q');
+                                                                          }
+                                 else if(cal.get(Calendar.DAY_OF_MONTH) == 30){
+                                                            quincena_modificada.setTipoPago('f');
+                                                        }
+                                 else
+                                 {
+                                     guardar=false;
+                                 }
+                        break;    
+                        
+                        case 1: //FEBRERO
+                                if(cal.get(Calendar.DAY_OF_MONTH) == 15){
+                                                                                quincena_modificada.setTipoPago('q');
+                                                                          }
+                                 else if(cal.get(Calendar.DAY_OF_MONTH) == 28 || cal.get(Calendar.DAY_OF_MONTH) == 29  ){
+                                                            quincena_modificada.setTipoPago('f');
+                                                        }
+                                 else
+                                 {
+                                     guardar=false;
+                                 }                            
+                            
+                       break;
+                    
+                    
+                    }
+                    
+                     
+                   /********/
+                    
+                    
+                    
+                    
                     
                    
                 }
